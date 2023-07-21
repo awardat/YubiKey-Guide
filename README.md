@@ -1,16 +1,20 @@
-This is a guide to using [YubiKey](https://www.yubico.com/products/yubikey-hardware/) as a [SmartCard](https://security.stackexchange.com/questions/38924/how-does-storing-gpg-ssh-private-keys-on-smart-cards-compare-to-plain-usb-drives) for storing GPG encryption, signing and authentication keys, which can also be used for SSH. Many of the principles in this document are applicable to other smart card devices.
+> **译者注**：为了避免在实际操作的时候产生偏差或者参阅[原文](https://github.com/drduh/YubiKey-Guide)的时候看一句查一句，进行了简单的翻译，主要为机翻，人工对少量语句进行了调整。如果有看不懂的地方以原文为准。
 
-Keys stored on YubiKey are [non-exportable](http://web.archive.org/web/20201125172759/https://support.yubico.com/hc/en-us/articles/360016614880-Can-I-Duplicate-or-Back-Up-a-YubiKey-) (as opposed to file-based keys that are stored on disk) and are convenient for everyday use. Instead of having to remember and enter passphrases to unlock SSH/GPG keys, YubiKey needs only a physical touch after being unlocked with a PIN. All signing and encryption operations happen on the card, rather than in OS memory.
+这是使用[YubiKey](https://www.yubico.com/products/yubikey-hardware/)作为[智能卡](https://security.stackexchange.com/questions/38924/how-does-storing-gpg-ssh-private-keys-on-smart-cards-compare-to-plain-usb-drives)用于存储GPG加密、签名和身份验证密钥，以及用于SSH的指南。本文档中的许多原则也适用于其他智能卡设备。
 
-**Tip** [drduh/Purse](https://github.com/drduh/Purse) is a password manager which uses GPG and YubiKey to securely store and read credentials.
+与存储在磁盘上的基于文件的密钥不同，YubiKey上存储的密钥[不可导出](http://web.archive.org/web/20201125172759/https://support.yubico.com/hc/en-us/articles/360016614880-Can-I-Duplicate-or-Back-Up-a-YubiKey-)。并且更方便日常使用，在使用PIN解锁后只需触摸YubiKey即可解锁SSH/GPG密钥，而无需记住并输入密码。所有签名和加密操作都发生在卡上，而不是在操作系统内存中。
 
-> **Security Note**: If you followed this guide before Jan 2021, your GPG *PIN* and *Admin PIN* may be set to their default values (`123456` and `12345678` respectively). This would allow an attacker to use your Yubikey or reset your PIN. Please see the [Change PIN](#change-pin) section for details on how to change your PINs.
+**提示** [drduh/Purse](https://github.com/drduh/Purse) 是一个密码管理器，它使用 GPG 和 YubiKey 来安全地存储和读取凭据。
 
-If you have a comment or suggestion, please open an [Issue](https://github.com/drduh/YubiKey-Guide/issues) on GitHub.
+> **安全说明**：如果您在 2021 年 1 月之前遵循本指南，您的 GPG *PIN* 和 *Admin PIN* 可能会保持其默认值（分别为“123456”和“12345678”）。 这将允许攻击者使用您的 Yubikey 或重置您的 PIN。 请参阅[更改 PIN](#change-pin) 部分，了解有关如何更改 PIN 的详细信息。
 
-- [Purchase](#purchase)
-- [Prepare environment](#prepare-environment)
-- [Required software](#required-software)
+如果您有意见或建议，请在 GitHub 上提交[Issue](https://github.com/drduh/YubiKey-Guide/issues)。
+
+# 目录
+
+- [选购](#选购)
+- [准备环境](#准备环境)
+- [所需软件](#所需软件)
   - [Debian and Ubuntu](#debian-and-ubuntu)
   - [Fedora](#fedora)
   - [Arch](#arch)
@@ -19,104 +23,104 @@ If you have a comment or suggestion, please open an [Issue](https://github.com/d
   - [OpenBSD](#openbsd)
   - [macOS](#macos)
   - [Windows](#windows)
-- [Entropy](#entropy)
+- [熵](#熵)
   - [YubiKey](#yubikey)
   - [OneRNG](#onerng)
-- [Creating keys](#creating-keys)
-  - [Temporary working directory](#temporary-working-directory)
-  - [Harden configuration](#harden-configuration)
-- [Master key](#master-key)
-- [Sign with existing key](#sign-with-existing-key)
-- [Sub-keys](#sub-keys)
-  - [Signing](#signing)
-  - [Encryption](#encryption)
-  - [Authentication](#authentication)
-  - [Add extra identities](#add-extra-identities)
-- [Verify](#verify)
-- [Export secret keys](#export-secret-keys)
-- [Revocation certificate](#revocation-certificate)
-- [Backup](#backup)
-- [Export public keys](#export-public-keys)
-- [Configure Smartcard](#configure-smartcard)
-  - [Enable KDF](#enable-kdf)
-  - [Change PIN](#change-pin)
-  - [Set information](#set-information)
-- [Transfer keys](#transfer-keys)
-  - [Signing](#signing)
-  - [Encryption](#encryption)
-  - [Authentication](#authentication)
-- [Verify card](#verify-card)
-- [Multiple YubiKeys](#multiple-yubikeys)
-  - [Switching between two or more Yubikeys](#switching-between-two-or-more-yubikeys)
-- [Cleanup](#cleanup)
-- [Using keys](#using-keys)
-- [Rotating keys](#rotating-keys)
-  - [Setup environment](#setup-environment)
-  - [Renewing sub-keys](#renewing-sub-keys)
-  - [Rotating keys](#rotating-keys)
-- [Adding notations](#adding-notations)
+- [创建密钥](#创建密钥)
+  - [临时工作目录](#临时工作目录)
+  - [加固配置](#加固配置)
+- [主密钥](#主密钥)
+- [使用现有密钥签名](#使用现有密钥签名)
+- [子密钥](#子密钥)
+  - [签名密钥](#签名)
+  - [加密密钥](#加密)
+  - [身份验证密钥](#身份验证)
+  - [添加额外的身份](#添加额外的身份)
+- [校验](#校验)
+- [导出密钥](#导出密钥)
+- [吊销证书](#吊销证书)
+- [备份](#备份)
+- [导出公钥](#导出公钥)
+- [配置智能卡](#配置智能卡)
+  - [启用KDF](#启用KDF)
+  - [修改PIN](#修改PIN)
+  - [设置信息](#设置信息)
+- [传输密钥](#传输密钥)
+  - [签名密钥](#签名密钥)
+  - [加密密钥](#加密密钥)
+  - [身份验证密钥](#身份验证密钥)
+- [校验智能卡](#校验智能卡)
+- [多个YubiKey](#多个YubiKey)
+  - [在多个Yubikey间切换](#在多个Yubikey间切换)
+- [清理](#清理)
+- [使用密钥](#使用密钥)
+- [密钥轮替](#密钥轮替)
+  - [设置环境](#设置环境)
+  - [更新子密钥](#更新子密钥)
+  - [轮替子密钥](#轮替子密钥)
+- [添加符号](#添加符号)
 - [SSH](#ssh)
-  - [Create configuration](#create-configuration)
-  - [Replace agents](#replace-agents)
-  - [Copy public key](#copy-public-key)
-  - [(Optional) Save public key for identity file configuration](#optional-save-public-key-for-identity-file-configuration)
-  - [Connect with public key authentication](#connect-with-public-key-authentication)
-  - [Import SSH keys](#import-ssh-keys)
-  - [Remote Machines (SSH Agent Forwarding)](#remote-machines-ssh-agent-forwarding)
-    - [Use ssh-agent](#use-ssh-agent)
-    - [Use S.gpg-agent.ssh](#use-sgpg-agentssh)
-    - [Chained SSH Agent Forwarding](#chained-ssh-agent-forwarding)
+  - [创建配置](#创建配置)
+  - [替换代理程序](#替换代理程序)
+  - [复制公钥](#复制公钥)
+  - [（可选）为身份文件配置保存公钥](#（可选）为身份文件配置保存公钥)
+  - [使用公钥认证连接](#使用公钥认证连接)
+  - [导入SSH密钥](#导入SSH密钥)
+  - [远程主机（SSH代理转发）](#远程主机（SSH代理转发）)
+    - [使用ssh-agent](#使用ssh-agent)
+    - [使用S.gpg-agent.ssh](#使用S.gpg-agent.ssh)
+    - [链式SSH代理转发](#链式SSH代理转发)
   - [GitHub](#github)
   - [OpenBSD](#openbsd)
   - [Windows](#windows)
     - [WSL](#wsl)
-      - [Use ssh-agent or use S.weasel-pegant](#use-ssh-agent-or-use-sweasel-pegant)
-      - [Prerequisites](#prerequisites)
-      - [WSL configuration](#wsl-configuration)
-      - [Remote host configuration](#remote-host-configuration)
+      - [使用ssh-agent还是S.weasel-pegant](#使用ssh-agent还是S.weasel-pegant)
+      - [先决条件](#先决条件)
+      - [WSL配置](#WSL配置)
+      - [远程主机配置](#远程主机配置)
   - [macOS](#macos)
-- [Remote Machines (GPG Agent Forwarding)](#remote-machines-gpg-agent-forwarding)
-  - [Steps for older distributions](#steps-for-older-distributions)
-  - [Chained GPG Agent Forwarding](#chained-gpg-agent-forwarding)
-- [Using Multiple Keys](#using-multiple-keys)
-- [Require touch](#require-touch)
+- [远程主机（GPG代理转发）](#远程主机（GPG代理转发）)
+  - [旧发行版的步骤](#旧发行版的步骤)
+  - [链式 GPG 代理转发](#链式 GPG 代理转发)
+- [使用多个密钥](#使用多个密钥)
+- [需要触摸](#需要触摸)
 - [Email](#email)
   - [Mailvelope on macOS](#mailvelope-on-macos)
   - [Mutt](#mutt)
-- [Reset](#reset)
-- [Recovery after reset](#recovery-after-reset)
-- [Notes](#notes)
-- [Troubleshooting](#troubleshooting)
-- [Alternatives](#alternatives)
-  - [Create keys with batch](#create-keys-with-batch)
+- [重置](#重置)
+- [重置后恢复](#重置后恢复)
+- [注释](#注释)
+- [疑难解答](#疑难解答)
+- [备选方案](#备选方案)
+  - [使用批处理创建密钥](#使用批处理创建密钥)
 - [Links](#links)
 
-# Purchase
+# 选购
 
-All YubiKeys except the blue "security key" model and the "Bio Series - FIDO Edition" are compatible with this guide. NEO models are limited to 2048-bit RSA keys. Compare YubiKeys [here](https://www.yubico.com/products/yubikey-hardware/compare-products-series/). A list of the YubiKeys compatible with OpenPGP is available [here](https://support.yubico.com/hc/en-us/articles/360013790259-Using-Your-YubiKey-with-OpenPGP). In May 2021, Yubico also released a press release and blog post about supporting resident ssh keys on their Yubikeys including blue "security key 5 NFC" with OpenSSH 8.2 or later, see [here](https://www.yubico.com/blog/github-now-supports-ssh-security-keys/) for details.
+除蓝色“security key”和“Bio Series - FIDO Edition”之外的所有 YubiKey 均与本指南兼容（NEO 型号仅限于 2048 位 RSA 密钥）。 点击[此处]比较 YubiKeys (https://www.yubico.com/products/yubikey-hardware/compare-products-series/)。 点击[此处]查看与 OpenPGP 兼容的 YubiKey 列表(https://support.yubico.com/hc/en-us/articles/360013790259-Using-Your-YubiKey-with-OpenPGP)获得。 2021 年 5 月，Yubico 还发布了一份新闻稿和博客文章，介绍了在8.2或更高版本的 OpenSSH 环境下使用Yubikey 驻留 ssh 密钥（甚至括蓝色“security key”），请参阅[此处](https://www.yubico.com/blog/github-now-supports-ssh-security-keys/)了解详细信息。
 
-To verify a YubiKey is genuine, open a [browser with U2F support](https://support.yubico.com/support/solutions/articles/15000009591-how-to-confirm-your-yubico-device-is-genuine-with-u2f) to [https://www.yubico.com/genuine/](https://www.yubico.com/genuine/). Insert a Yubico device, and select *Verify Device* to begin the process. Touch the YubiKey when prompted, and if asked, allow it to see the make and model of the device. If you see *Verification complete*, the device is authentic.
+要验证 YubiKey 是否为正版，请打开 [支持 U2F 的浏览器](https://support.yubico.com/support/solutions/articles/15000009591-how-to-confirm-your-yubico-device-is-genuine-with-u2f) 打开 [https://www.yubico.com/genuine/](https://www.yubico.com/genuine/)。 插入 Yubico 设备，然后选择_Verify Device_开始验证。 出现提示时触摸 YubiKey，如果询问，则允许其查看设备的品牌和型号。 如果您看到“Yubico device verified”，则该设备是正品。
 
-This website verifies YubiKey device attestation certificates signed by a set of Yubico certificate authorities, and helps mitigate [supply chain attacks](https://media.defcon.org/DEF%20CON%2025/DEF%20CON%2025%20presentations/DEF%20CON%2025%20-%20r00killah-and-securelyfitz-Secure-Tokin-and-Doobiekeys.pdf).
+该网站验证由一组 Yubico 证书颁发机构签署的 YubiKey 设备证明证书，以降低遭到[供应链攻击](https://media.defcon.org/DEF%20CON%2025/DEF%20CON%2025%20presentations/DEF%20CON%2025%20-%20r00killah-and-securelyfitz-Secure-Tokin-and-Doobiekeys.pdf)的风险。
 
-You will also need several small storage devices (microSD cards work well) for storing encrypted backups of your keys.
+您还需要几个小型存储设备（比如microSD卡）来存储密钥的加密备份。
 
-# Prepare environment
+# 准备环境
 
-To create cryptographic keys, a secure environment that can be reasonably assured to be free of adversarial control is recommended. Here is a general ranking of environments most to least likely to be compromised:
+为了创建加密密钥，建议使用可以合理保证不受对抗性控制的安全环境。 以下是常见环境的安全性排名：
 
-1. Daily-use operating system
-1. Virtual machine on daily-use host OS (using [virt-manager](https://virt-manager.org/), VirtualBox, or VMware)
-1. Separate hardened [Debian](https://www.debian.org/) or [OpenBSD](https://www.openbsd.org/) installation which can be dual booted
-1. Live image, such as [Debian Live](https://www.debian.org/CD/live/) or [Tails](https://tails.boum.org/index.en.html)
-1. Secure hardware/firmware ([Coreboot](https://www.coreboot.org/), [Intel ME removed](https://github.com/corna/me_cleaner))
-1. Dedicated air-gapped system with no networking capabilities
+1. 日常使用的操作系统
+1. 在日常使用的操作系统中安装的虚拟机（比如 [virt-manager](https://virt-manager.org/)、VirtualBox 或 VMware）
+1. 可以双启动的单独的强化 [Debian](https://www.debian.org/) 或 [OpenBSD](https://www.openbsd.org/)
+1. LiveCD， 比如 [Debian Live](https://www.debian.org/CD/live/) 或 [Tails](https://tails.boum.org/index.en.html)
+1. 安全硬件/固件（[Coreboot](https://www.coreboot.org/)、[Intel ME removed](https://github.com/corna/me_cleaner)）
+1. 没有网络功能或使用网闸隔离的专用系统
 
-This guide recommends using a bootable "live" Debian Linux image to provide such an environment, however, depending on your threat model, you may want to take fewer or more steps to secure it.
+本指南建议使用可启动的Debian Linux LiveCD 映像来提供这样的环境，但是，根据您的威胁模型，您可以选择安全性更高或者更低的环境。
 
-To use Debian Live, download the latest image:
+下载最新的Debian LiveCD：
 
-```console
+```bash
 $ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/SHA512SUMS
 
 $ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/SHA512SUMS.sign
@@ -124,9 +128,11 @@ $ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/S
 $ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/$(awk '/xfce.iso/ {print $2}' SHA512SUMS)
 ```
 
-Verify the signature of the hashes file with GPG:
+> **译者注：**可以使用较近的官方网站提供的镜像站以提高下载效率，但不应忘记验证签名以确保镜像未被篡改。
 
-```console
+使用 GPG 验证哈希文件的签名：
+
+```bash
 $ gpg --verify SHA512SUMS.sign SHA512SUMS
 gpg: Signature made Sat 17 Dec 2022 11:06:20 AM PST
 gpg:                using RSA key DF9B9C49EAA9298432589D76DA87E80D6294BE9B
@@ -146,26 +152,26 @@ gpg:          There is no indication that the signature belongs to the owner.
 Primary key fingerprint: DF9B 9C49 EAA9 2984 3258  9D76 DA87 E80D 6294 BE9B
 ```
 
-If the public key cannot be received, try changing the DNS resolver and/or use a different keyserver:
+如果无法接收公钥，请尝试更改 DNS 解析器和/或使用不同的密钥服务器：
 
-```console
+```bash
 $ gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv DF9B9C49EAA9298432589D76DA87E80D6294BE9B
 ```
 
-Ensure the SHA512 hash of the live image matches the one in the signed file - if there following command produces output, it is correct:
+确保LiveCD镜像文件的 SHA512 哈希值与签名文件中的哈希值匹配 - 如果以下命令生成输出，则它是正确的：
 
-```console
+```bash
 $ grep $(sha512sum debian-live-*-amd64-xfce.iso) SHA512SUMS
 SHA512SUMS:f9976e2090a54667a26554267941792c293628cceb643963e425bf90449e3c0eeb616e8ededc187070910401c8ab0348fdbc3292b6d04e29dcfb472ac258a542  debian-live-11.6.0-amd64-xfce.iso
 ```
 
-See [Verifying authenticity of Debian CDs](https://www.debian.org/CD/verify) for more information.
+更多有关信息，请参阅[验证 Debian CD 的真实性](https://www.debian.org/CD/verify)。
 
-Mount a storage device and copy the image to it:
+安装存储设备并将映像复制到其中：
 
 **Linux**
 
-```console
+```bash
 $ sudo dmesg | tail
 usb-storage 3-2:1.0: USB Mass Storage device detected
 scsi host2: usb-storage 3-2:1.0
@@ -186,7 +192,7 @@ $ sudo dd if=debian-live-*-amd64-xfce.iso of=/dev/sdb bs=4M status=progress ; sy
 
 **OpenBSD**
 
-```console
+```bash
 $ dmesg | tail -n2
 sd2 at scsibus4 targ 1 lun 0: <TS-RDF5, SD Transcend, TS3A> SCSI4 0/direct removable serial.0000000000000
 sd2: 15193MB, 512 bytes/sector, 31116288 sectors
@@ -197,33 +203,41 @@ $ doas dd if=debian-live-*-amd64-xfce.iso of=/dev/rsd2c bs=4m
 1951432704 bytes transferred in 139.125 secs (14026448 bytes/sec)
 ```
 
-Shut down the computer and disconnect internal hard drives and all unnecessary peripheral devices. If being run within a VM, this part can be skipped as no such devices should be attached to the VM since the image will still be run as a "live image".
+**Windows**
 
-# Required software
+```
+使用启动盘创建工具，如[Rufus](https://rufus.ie/)
+```
 
-Boot the live image and configure networking.
+关闭计算机并断开内部硬盘驱动器和所有不必要的外围设备。 如果在 VM 内运行，则可以跳过此部分，因为不应将此类设备附加到 VM，因为映像仍将作为“LiveCD”运行。
 
-**Note** If the screen locks, unlock with `user`/`live`.
+# 所需软件
 
-Open the terminal and install required software packages.
+启动LiveCD映像并配置网络。 
+
+**注意** 如果屏幕锁定，请使用`user/live`解锁，或查阅LiveCD的相关文档取得默认用户名和口令。 
+
+打开终端并安装所需的软件包。
 
 ## Debian and Ubuntu
 
-```console
+```bash
 $ sudo apt update ; sudo apt -y upgrade
 
 $ sudo apt -y install wget gnupg2 gnupg-agent dirmngr cryptsetup scdaemon pcscd secure-delete hopenpgp-tools yubikey-personalization
 ```
 
-**Note** Live Ubuntu images [may require modification](https://github.com/drduh/YubiKey-Guide/issues/116) to `/etc/apt/sources.list` and may need additional packages:
+> **译者注：[在Debian 12中不包含hopenpgp-tools包](https://github.com/drduh/YubiKey-Guide/issues/389)，这个包主要用于[校验](#校验)，也可以通过其他方式进行校验
 
-```console
+**注意** Live Ubuntu 镜像 [可能需要修改](https://github.com/drduh/YubiKey-Guide/issues/116)  `/etc/apt/sources.list` 并且可能需要额外的软件包：
+
+```bash
 $ sudo apt -y install libssl-dev swig libpcsclite-dev
 ```
 
-**Optional** Install the `ykman` utility, which will allow you to enable touch policies (requires admin PIN):
+**可选** 安装 `ykman` 实用程序，该实用程序将允许您启用触摸策略（需要管理员 PIN）：
 
-```console
+```bash
 $ sudo apt -y install python3-pip python3-pyscard
 
 $ pip3 install PyOpenSSL
@@ -235,9 +249,25 @@ $ sudo service pcscd start
 $ ~/.local/bin/ykman openpgp info
 ```
 
+> **译者注：**在较新的Debian版本中修改了pip安装方式，如果使用`pip3 install`出现报错，则根据提示信息使用`apt install python3-xxx`命令安装，xxx为原pip包名称
+
+```bash
+$ sudo apt -y install pcscd python3-yubikey-manager python3-ykman
+
+$ sudo service pcscd start
+
+$ ykman openpgp info
+```
+
+**可选 **根据实际使用需求安装图形界面工具和PIV工具
+
+```bash
+$ sudo apt -y install yubico-piv-tool yubikey-manager-qt kleopatra
+```
+
 ## Fedora
 
-```console
+```bash
 $ sudo dnf install wget
 $ wget https://github.com/rpmsphere/noarch/raw/master/r/rpmsphere-release-34-2.noarch.rpm
 $ sudo rpm -Uvh rpmsphere-release*rpm
@@ -247,19 +277,19 @@ $ sudo dnf install gnupg2 dirmngr cryptsetup gnupg2-smime pcsc-tools opensc pcsc
 
 ## Arch
 
-```console
+```bash
 $ sudo pacman -Syu gnupg pcsclite ccid hopenpgp-tools yubikey-personalization
 ```
 
 ## RHEL7
 
-```console
+```bash
 $ sudo yum install -y gnupg2 pinentry-curses pcsc-lite pcsc-lite-libs gnupg2-smime
 ```
 
 ## NixOS
 
-Generate an air-gapped NixOS LiveCD image with the given config:
+使用给定的配置生成网络隔离 NixOS LiveCD 映像：
 
 ```nix
 # yubikey-installer.nix
@@ -435,62 +465,64 @@ in {
 }
 ```
 
-Build the installer and copy it to a USB drive.
+构建安装程序并将其复制到 USB 驱动器。
 
-```console
+```bash
 $ nix build -f yubikey-installer.nix -o installer nixos-yubikey
 
 $ sudo cp -v installer/iso/*.iso /dev/sdb; sync
 'installer/iso/nixos-yubikey-22.05beta-248980.gfedcba-x86_64-linux.iso' -> '/dev/sdb'
 ```
 
-With this image, you won't need to manually create a [temporary working directory](#temporary-working-directory) or [harden the configuration](#harden-configuration), as it was done when creating the image.
+使用此映像，您无需手动创建[临时工作目录](#temporary-working-directory) 或[强化配置](#harden-configuration)，因为它是在创建映像时完成的。
 
 ## OpenBSD
 
-```console
+```bash
 $ doas pkg_add gnupg pcsc-tools
 ```
 
 ## macOS
 
-Download and install [Homebrew](https://brew.sh/) and the following packages:
+下载并安装 [Homebrew](https://brew.sh/) 和以下软件包：
 
-```console
+```bash
 $ brew install gnupg yubikey-personalization hopenpgp-tools ykman pinentry-mac wget
 ```
 
-**Note** An additional Python package dependency may need to be installed to use [`ykman`](https://support.yubico.com/support/solutions/articles/15000012643-yubikey-manager-cli-ykman-user-guide) - `pip install yubikey-manager`
+**注意** 可能需要安装额外的 Python 包依赖项才能使用 [`ykman`](https://support.yubico.com/support/solutions/articles/15000012643-yubikey-manager-cli-ykman-user -guide) - `pip install yubikey-manager`
 
 ## Windows
 
-Download and install [Gpg4Win](https://www.gpg4win.org/) and [PuTTY](https://putty.org).
+下载并安装[Gpg4Win](https://www.gpg4win.org/)和[PuTTY](https://putty.org)。
 
-You may also need more recent versions of [yubikey-personalization](https://developers.yubico.com/yubikey-personalization/Releases/) and [yubico-c](https://developers.yubico.com/yubico-c/Releases/).
+您可能还需要更新版本的 [yubikey-personalization](https://developers.yubico.com/yubikey-personalization/Releases/) 和 [yubico-c](https://developers.yubico.com/yubico-c/Releases/)。
 
-# Entropy
+# 熵
 
-Generating cryptographic keys requires high-quality [randomness](https://www.random.org/randomness/), measured as entropy.
+生成加密密钥需要高质量的[随机性](https://www.random.org/randomness/)，以熵来衡量。
 
-Most operating systems use software-based pseudorandom number generators or CPU-based hardware random number generators (HRNG).
+大多数操作系统使用基于软件的伪随机数生成器或基于 CPU 的硬件随机数生成器 (HRNG)。
 
-Optionally, you can use a separate hardware device like [OneRNG](https://onerng.info/onerng/) to [increase the speed](https://lwn.net/Articles/648550/) of entropy generation and possibly also the quality.
+或者，您可以使用单独的硬件设备，例如 [OneRNG](https://onerng.info/onerng/) 来[提高熵生成的速度](https://lwn.net/Articles/648550/)，并且可能 还有质量。
+
+> **译者注**此OneRNG目前还没看到国内有销售或制作，猜测可能可以使用通用的CC2531开发板刷入软件实现。[开发资料](https://github.com/OneRNG/)
 
 ## YubiKey
 
-YubiKey firmware version 5.2.3 introduced "Enhancements to OpenPGP 3.4 Support" - which can optionally gather additional entropy from YubiKey via the SmartCard interface.
+YubiKey 固件版本 5.2.3 引入了“OpenPGP 3.4 支持的增强”——可以选择通过智能卡接口从 YubiKey 收集额外的熵。
 
-To seed the kernel's PRNG with additional 512 bytes retrieved from the YubiKey:
+要使用从 YubiKey 检索到的额外 512 字节作为内核 PRNG 的种子：
 
-```console
+```bash
 $ echo "SCD RANDOM 512" | gpg-connect-agent | sudo tee /dev/random | hexdump -C
 ```
 
 ## OneRNG
 
-Install [rng-tools](https://wiki.archlinux.org/index.php/Rng-tools) software:
+安装[rng-tools](https://wiki.archlinux.org/index.php/Rng-tools)软件：
 
-```console
+```bash
 $ sudo apt -y install at rng-tools python3-gnupg openssl
 
 $ wget https://github.com/OneRNG/onerng.github.io/raw/master/sw/onerng_3.7-1_all.deb
@@ -503,35 +535,35 @@ $ sudo dpkg -i onerng_3.7-1_all.deb
 $ echo "HRNGDEVICE=/dev/ttyACM0" | sudo tee /etc/default/rng-tools
 ```
 
-Plug in the device and restart rng-tools:
+插入设备并重新启动 rng-tools：
 
-```console
+```bash
 $ sudo atd
 
 $ sudo service rng-tools restart
 ```
 
-# Creating keys
+# 创建密钥
 
-## Temporary working directory
+## 临时工作目录
 
-Create a temporary directory which will be cleared on [reboot](https://en.wikipedia.org/wiki/Tmpfs) and set it as the GnuPG directory:
+创建一个临时目录，并将其设置为GnuPG目录（该目录将在[重新启动](https://en.wikipedia.org/wiki/Tmpfs)时清除）：
 
-```console
+```bash
 $ export GNUPGHOME=$(mktemp -d -t gnupg_$(date +%Y%m%d%H%M)_XXX)
 ```
 
-Otherwise, to preserve the working environment, set the GnuPG directory to your home folder:
+如果要保留工作环境，请将 GnuPG 目录设置为您的主文件夹：
 
-```console
+```bash
 $ export GNUPGHOME=~/gnupg-workspace
 ```
 
-## Harden configuration
+## 加固配置
 
-Create a hardened configuration in the temporary working directory with the following options:
+使用以下选项在临时工作目录中创建加固配置：
 
-```console
+```bash
 $ wget -O $GNUPGHOME/gpg.conf https://raw.githubusercontent.com/drduh/config/master/gpg.conf
 
 $ grep -ve "^#" $GNUPGHOME/gpg.conf
@@ -556,39 +588,43 @@ use-agent
 throw-keyids
 ```
 
-**Important** Disable networking for the remainder of the setup.
+**重要** 在执行以下设置前禁用或断开网络。
 
-# Master key
+# 主密钥
 
-The first key to generate is the master key. It will be used for certification only: to issue sub-keys that are used for encryption, signing and authentication.
+要生成的第一个密钥是主密钥。 它将仅用于认证：颁发用于加密、签名和身份验证的子密钥。
 
-**Important** The master key should be kept offline at all times and only accessed to revoke or issue new sub-keys. Keys can also be generated on the YubiKey itself to ensure no other copies exist.
+**重要** 主密钥应始终保持离线状态，并且仅在撤销或颁发新子密钥时才可访问。 密钥也可以在 YubiKey 本身上生成，以确保不存在其他副本。
 
-You'll be prompted to enter and verify a passphrase - keep it handy as you'll need it multiple times later.
+系统会提示您输入并验证口令 - 请妥善保存，因为稍后您将多次需要它。
 
-Generate a strong passphrase which could be written down in a secure place or memorized:
+> **译者注：**passphrase、password等词汇在本文中统一译为口令
 
-```console
+生成一个强口令，可以将其写在安全的地方或记住：
+
+```bash
 $ gpg --gen-random --armor 0 24
 ydOmByxmDe63u7gqx2XI9eDgpvJwibNH
 ```
 
-Use upper case letters for improved readability if passwords are written down by hand:
+如果手写口令，请使用大写字母以提高可读性：
 
-```console
+```bash
 $ LC_ALL=C tr -dc '[:upper:]' < /dev/urandom | fold -w 20 | head -n1
 BSSYMUGGTJQVWZZWOPJG
 ```
 
-**Important** Save this credential in a permanent, secure place as it will be needed to issue new sub-keys after expiration, and to provision additional YubiKeys, as well as to your Debian Live environment clipboard, as you'll need it several times throughout to generate keys.
+**重要** 将此凭证保存在永久、安全的位置，因为在过期后需要它来颁发新的子密钥、添加外的 YubiKey，以及您需要多次访问 Debian Live 环境剪贴板以生成密钥。
 
-**Tip** On Linux or OpenBSD, select the password using the mouse or by double-clicking on it to copy to clipboard. Paste using the middle mouse button or `Shift`-`Insert`.
+**提示** 在 Linux 或 OpenBSD 上，使用鼠标选择密码或双击密码将其复制到剪贴板。 使用鼠标中键或`Shift-Insert`进行粘贴。
 
-Generate a new key with GPG, selecting `(8) RSA (set your own capabilities)`, `Certify` capability only and `4096` bit key size.
+使用 GPG 生成新密钥，选择“(8) RSA (set your own capabilities)”、仅选择“Certify”（认证）功能和和“4096”位密钥。
 
-Do **not** set the master (certify) key to expire - see [Note #3](#notes).
+**不要**为主（认证）密钥设置过期时间 - 请参阅[注释 #3](#注释)。
 
-```console
+> **译者注**鉴于5.2.3以后版本的Yibikey均支持ECC算法，可以根据需求选用ECC算法生成密钥，操作方法与RSA相同
+
+```bash
 $ gpg --expert --full-generate-key
 
 Please select what kind of key you want:
@@ -647,9 +683,9 @@ Key does not expire at all
 Is this correct? (y/N) y
 ```
 
-Input any name and email address (it doesn't have to be valid):
+输入任何姓名和电子邮件地址（不必是有效的）：
 
-```console
+```bash
 GnuPG needs to construct a user ID to identify your key.
 
 Real name: Dr Duh
@@ -676,33 +712,33 @@ pub   rsa4096/0xFF3E7D88647EBCDB 2017-10-09 [C]
 uid                              Dr Duh <doc@duh.to>
 ```
 
-Export the key ID as a [variable](https://stackoverflow.com/questions/1158091/defining-a-variable-with-or-without-export/1158231#1158231) (`KEYID`) for use later:
+将密钥 ID 导出为[变量](https://stackoverflow.com/questions/1158091/defining-a-variable-with-or-without-export/1158231#1158231) (`KEYID`) 供以后使用：
 
-```console
+```bash
 $ export KEYID=0xFF3E7D88647EBCDB
 ```
 
-# Sign with existing key
+# 使用现有密钥签名
 
-(Optional) If you already have a PGP key, you may want to sign the new key with the old one to prove that the new key is controlled by you.
+（可选）如果您已经拥有 PGP 密钥，您可能需要使用旧密钥对新密钥进行签名，以证明新密钥由您控制。
 
-Export your existing key to move it to the working keyring:
+导出现有密钥以将其移至工作密钥环：
 
-```console
+```bash
 $ gpg --export-secret-keys --armor --output /tmp/new.sec
 ```
 
-Then sign the new key:
+然后签署新密钥：
 
-```console
+```bash
 $ gpg  --default-key $OLDKEY --sign-key $KEYID
 ```
 
-# Sub-keys
+# 子密钥
 
-Edit the master key to add sub-keys:
+编辑主密钥以添加子密钥：
 
-```console
+```bash
 $ gpg --expert --edit-key $KEYID
 
 Secret key is available.
@@ -713,15 +749,15 @@ sec  rsa4096/0xEA5DE91459B80592
 [ultimate] (1). Dr Duh <doc@duh.to>
 ```
 
-Use 4096-bit RSA keys.
+使用 4096 位 RSA 密钥。
 
-Use a 1 year expiration for sub-keys - they can be renewed using the offline master key. See [rotating keys](#rotating-keys).
+子密钥的有效期为 1 年 - 可以使用离线主密钥对其进行续订。 请参阅[密钥轮替](#密钥轮替)。
 
-## Signing
+## 签名
 
-Create a [signing key](https://stackoverflow.com/questions/5421107/can-rsa-be-both-used-as-encryption-and-signature/5432623#5432623) by selecting `addkey` then `(4) RSA (sign only)`:
+通过选择`addkey`然后选择`(4) RSA (sign only)`来创建[签名密钥](https://stackoverflow.com/questions/5421107/can-rsa-be-both-used-as-encryption-and-signature/5432623#5432623)：
 
-```console
+```bash
 gpg> addkey
 Key is protected.
 
@@ -763,11 +799,11 @@ ssb  rsa4096/0xBECFA3C1AE191D15
 [ultimate] (1). Dr Duh <doc@duh.to>
 ```
 
-## Encryption
+## 加密
 
-Next, create an [encryption key](https://www.cs.cornell.edu/courses/cs5430/2015sp/notes/rsa_sign_vs_dec.php) by selecting `(6) RSA (encrypt only)`:
+接下来，通过选`(6) RSA (encrypt only)`创建一个[加密密钥](https://www.cs.cornell.edu/courses/cs5430/2015sp/notes/rsa_sign_vs_dec.php)：
 
-```console
+```bash
 gpg> addkey
 Please select what kind of key you want:
    (3) DSA (sign only)
@@ -809,13 +845,13 @@ ssb  rsa4096/0x5912A795E90DD2CF
 [ultimate] (1). Dr Duh <doc@duh.to>
 ```
 
-## Authentication
+## 身份验证
 
-Finally, create an [authentication key](https://superuser.com/questions/390265/what-is-a-gpg-with-authenticate-capability-used-for).
+最后，创建一个[身份验证密钥](https://superuser.com/questions/390265/what-is-a-gpg-with-authenticate-capability-used-for)。
 
-GPG doesn't provide an authenticate-only key type, so select `(8) RSA (set your own capabilities)` and toggle the required capabilities until the only allowed action is `Authenticate`:
+GPG 不提供仅验证密钥类型，因此选择`(8) RSA (set your own capabilities)`并切换所需的功能，直到唯一允许的操作是`Authenticate`：
 
-```console
+```bash
 gpg> addkey
 Please select what kind of key you want:
    (3) DSA (sign only)
@@ -899,23 +935,23 @@ ssb  rsa4096/0x3F29127E79649A3D
 [ultimate] (1). Dr Duh <doc@duh.to>
 ```
 
-Finish by saving the keys.
+通过保存密钥来完成创建。
 
-```console
+```bash
 gpg> save
 ```
 
-## Add extra identities
+## 添加额外的身份
 
-(Optional) To add additional email addresses or identities, use `adduid`.
+（可选）要添加其他电子邮件地址或身份，请使用`adduid`。
 
-First open the keyring:
-```console
+首先打开密钥环：
+```bash
 $ gpg --expert --edit-key $KEYID
 ```
 
-Then add the new identity:
-```console
+然后添加新身份，并通过`trust`设置信任新增的身份：
+```bash
 gpg> adduid
 Real name: Dr Duh
 Email address: DrDuh@other.org
@@ -1004,13 +1040,13 @@ ssb  rsa4096/0x3F29127E79649A3D
 gpg> save
 ```
 
-By default, the last identity added will be the primary user ID - use `primary` to change that.
+默认情况下，最后添加的身份将是主用户 ID - 使用`primary`进行更改。
 
-# Verify
+# 校验
 
-List the generated secret keys and verify the output:
+列出生成的密钥并验证输出：
 
-```console
+```bash
 $ gpg -K
 /tmp.FLZC0xcM/pubring.kbx
 -------------------------------------------------------------------------
@@ -1022,67 +1058,67 @@ ssb   rsa4096/0x5912A795E90DD2CF 2017-10-09 [E] [expires: 2018-10-09]
 ssb   rsa4096/0x3F29127E79649A3D 2017-10-09 [A] [expires: 2018-10-09]
 ```
 
-Add any additional identities or email addresses you wish to associate using the `adduid` command.
+使用`adduid`命令添加您想要关联的任何其他身份或电子邮件地址。
 
-**Tip** Verify with a OpenPGP [key best practice checker](https://riseup.net/en/security/message-security/openpgp/best-practices#openpgp-key-checks):
+**提示** 使用 OpenPGP [关键最佳实践检查器](https://riseup.net/en/security/message-security/openpgp/best-practices#openpgp-key-checks) 进行验证：
 
-```console
+```bash
 $ gpg --export $KEYID | hokey lint
 ```
 
-The output will display any problems with your key in red text. If everything is green, your key passes each of the tests. If it is red, your key has failed one of the tests.
+输出将以红色文本显示密钥的任何问题。 如果一切都是绿色的，则您的密钥通过了每项测试。 如果它是红色的，则您的密钥未通过其中一项测试。
 
-> hokey may warn (orange text) about cross certification for the authentication key. GPG's [Signing Subkey Cross-Certification](https://gnupg.org/faq/subkey-cross-certify.html) documentation has more detail on cross certification, and gpg v2.2.1 notes "subkey <keyid> does not sign and so does not need to be cross-certified". hokey may also indicate a problem (red text) with `Key expiration times: []` on the primary key (see [Note #3](#notes) about not setting an expiry for the primary key).
+> hokey 可能会警告（橙色文本）有关身份验证密钥的交叉认证。 GPG 的 [签名子密钥交叉认证](https://gnupg.org/faq/subkey-cross-certify.html) 文档提供了有关交叉认证的更多详细信息，并且 gpg v2.2.1 说明“子密钥 <keyid> 不签名,并且因此不需要交叉认证”。 hokey 还可能表示主键上的“密钥过期时间：[]”存在问题（红色文本）（请参阅[注释 #3](#注释) 关于不为主键设置过期时间的信息）。
 
-# Export secret keys
+# 导出密钥
 
-The master key and sub-keys will be encrypted with your passphrase when exported.
+导出密钥时需要使用您先前输入的口令，并且导出的主密钥和子密钥使用该口令进行加密。
 
-Save a copy of your keys:
+保存密钥的副本：
 
-```console
+```bash
 $ gpg --armor --export-secret-keys $KEYID > $GNUPGHOME/mastersub.key
 
 $ gpg --armor --export-secret-subkeys $KEYID > $GNUPGHOME/sub.key
 ```
 
-On Windows, note that using any extension other than `.gpg` or attempting IO redirection to a file will garble the secret key, making it impossible to import it again at a later date:
+在 Windows 上，请注意，使用除`.gpg`之外的任何扩展名或尝试 IO 重定向到文件都会导致密钥混乱，从而导致以后无法再次导入它：
 
-```console
+```bash
 $ gpg -o \path\to\dir\mastersub.gpg --armor --export-secret-keys $KEYID
 
 $ gpg -o \path\to\dir\sub.gpg --armor --export-secret-subkeys $KEYID
 ```
 
-# Revocation certificate
+# 吊销证书
 
-Although we will backup and store the master key in a safe place, it is best practice to never rule out the possibility of losing it or having the backup fail. Without the master key, it will be impossible to renew or rotate subkeys or generate a revocation certificate, the PGP identity will be useless.
+尽管我们会将主密钥备份并存储在安全的地方，但最佳实践是永远不排除丢失主密钥或备份失败的可能性。 如果没有主密钥，就无法更新或轮替子密钥或生成吊销证书，PGP 身份将毫无用处。
 
-Even worse, we cannot advertise this fact in any way to those that are using our keys. It is reasonable to assume this *will* occur at some point and the only remaining way to deprecate orphaned keys is a revocation certificate.
+更糟糕的是，我们无法以任何方式向使用我们密钥的人宣传这一事实。 可以合理地假设这种情况“将”在某个时刻发生，并且弃用孤立密钥的唯一剩余方法是吊销证书。
 
-To create the revocation certificate:
+要创建吊销证书：
 
-``` console
+``` bash
 $ gpg --output $GNUPGHOME/revoke.asc --gen-revoke $KEYID
 ```
 
-The `revoke.asc` certificate file should be stored (or printed) in a (secondary) place that allows retrieval in case the main backup fails.
+`revoke.asc`证书文件应存储（或打印）在与主密钥不同的其他位置，以便在主备份失败时可以进行检索。
 
-# Backup
+# 备份
 
-Once keys are moved to YubiKey, they cannot be moved again! Create an **encrypted** backup of the keyring on removable media so you can keep it offline in a safe place.
+一旦密钥移动到 YubiKey，就无法再次移动！ 在可移动介质上创建密钥环的**加密**备份，以便您可以将其离线保存在安全的地方。
 	
-**Tip** The ext2 filesystem (without encryption) can be mounted on both Linux and OpenBSD. Consider using a FAT32/NTFS filesystem for MacOS/Windows compatibility instead.
+**提示** ext2 文件系统（未加密）可以在 Linux 和 OpenBSD 上挂载。 请考虑使用 FAT32/NTFS 文件系统来实现 MacOS/Windows 兼容性。
 
-As an additional backup measure, consider using a [paper copy](https://www.jabberwocky.com/software/paperkey/) of the keys. The [Linux Kernel Maintainer PGP Guide](https://www.kernel.org/doc/html/latest/process/maintainer-pgp-guide.html#back-up-your-master-key-for-disaster-recovery) points out that such printouts *are still password-protected*. It recommends to *write the password on the paper*, since it will be unlikely that you remember the original key password that was used when the paper backup was created. Obviously, you need a really good place to keep such a printout.
+作为额外的备份措施，请考虑使用密钥的[纸质副本](https://www.jabberwocky.com/software/paperkey/)。 [Linux 内核维护者 PGP 指南](https://www.kernel.org/doc/html/latest/process/maintainer-pgp-guide.html#back-up-your-master-key-for-disaster-recovery ）指出此类打印输出_仍然受口令保护_。 它建议*将口令写在纸上*，因为您不太可能记住创建纸质备份时使用的原始密钥口令。 显然，您需要一个非常好的地方来保存这样的打印输出。
 
-It is strongly recommended to keep even encrypted OpenPGP private key material offline to deter [key overwriting attacks](https://www.kopenpgp.com/), for example.
+强烈建议将加密的 OpenPGP 私钥材料保持离线状态，以阻止[密钥覆盖攻击](https://www.kopenpgp.com/)。
 
 **Linux**
 
-Attach another external storage device and check its label:
+连接一个外部存储设备并检查其标签：
 
-```console
+```bash
 $ sudo dmesg | tail
 mmc0: new high speed SDHC card at address a001
 mmcblk0: mmc0:a001 SS16G 14.8 GiB
@@ -1094,15 +1130,15 @@ Sector size (logical/physical): 512 bytes / 512 bytes
 I/O size (minimum/optimal): 512 bytes / 512 bytes
 ```
 
-Write it with random data to prepare for encryption:
+写入随机数据以清除存储设备中可能残存的历史数据：
 
-```console
+```bash
 $ sudo dd if=/dev/urandom of=/dev/mmcblk0 bs=4M status=progress
 ```
 
-Erase and create a new partition table:
+擦除并创建新的分区表：
 
-```console
+```bash
 $ sudo fdisk /dev/mmcblk0
 
 Welcome to fdisk (util-linux 2.33.1).
@@ -1122,9 +1158,9 @@ Syncing disks.
 
 ```
 
-Create a new partition with a 25 Megabyte size:
+创建一个大小为 25 MB 的新分区：
 
-```console
+```bash
 $ sudo fdisk /dev/mmcblk0
 
 Welcome to fdisk (util-linux 2.36.1).
@@ -1144,9 +1180,9 @@ Calling ioctl() to re-read partition table.
 Syncing disks.
 ```
 
-Use [LUKS](https://askubuntu.com/questions/97196/how-secure-is-an-encrypted-luks-filesystem) to encrypt the new partition. Generate a different password which will be used to protect the filesystem:
+使用 [LUKS](https://askubuntu.com/questions/97196/how-secure-is-an-encrypted-luks-filesystem) 加密新分区。 生成一个不同的口令，用于保护文件系统：
 
-```console
+```bash
 $ sudo cryptsetup luksFormat /dev/mmcblk0p1
 
 WARNING!
@@ -1158,22 +1194,22 @@ Enter passphrase for /dev/mmcblk0p1:
 Verify passphrase:
 ```
 
-Mount the partition:
+挂载分区：
 
-```console
+```bash
 $ sudo cryptsetup luksOpen /dev/mmcblk0p1 secret
 Enter passphrase for /dev/mmcblk0p1:
 ```
 
-Create an ext2 filesystem:
+创建 ext2 文件系统：
 
-```console
+```bash
 $ sudo mkfs.ext2 /dev/mapper/secret -L gpg-$(date +%F)
 ```
 
-Mount the filesystem and copy the temporary GnuPG directory with keyring:
+挂载文件系统并复制包含密钥环的临时 GnuPG 目录：
 
-```console
+```bash
 $ sudo mkdir /mnt/encrypted-storage
 
 $ sudo mount /dev/mapper/secret /mnt/encrypted-storage
@@ -1181,17 +1217,17 @@ $ sudo mount /dev/mapper/secret /mnt/encrypted-storage
 $ sudo cp -avi $GNUPGHOME /mnt/encrypted-storage/
 ```
 
-**Optional** Backup the OneRNG package:
+**可选** 备份 OneRNG 包：
 
-```console
+```bash
 $ sudo cp onerng_3.7-1_all.deb /mnt/encrypted-storage/
 ```
 
-**Note** If you plan on setting up multiple keys, keep the backup mounted or remember to terminate the gpg process before [saving](https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056353.html).
+**注意** 如果您计划设置多个密钥，请保持备份介质挂载状态或记住在[保存](https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056353.html)之前终止 gpg 进程。
 
-Unmount, close and disconnect the encrypted volume:
+卸载、关闭和断开加密卷：
 
-```console
+```bash
 $ sudo umount /mnt/encrypted-storage/
 
 $ sudo cryptsetup luksClose secret
@@ -1199,22 +1235,22 @@ $ sudo cryptsetup luksClose secret
 
 **OpenBSD**
 
-Attach a USB disk and determine its label:
+连接 USB 盘并确定其标签：
 
-```console
+```bash
 $ dmesg | grep sd.\ at
 sd2 at scsibus5 targ 1 lun 0: <TS-RDF5, SD Transcend, TS37> SCSI4 0/direct removable serial.00000000000000000000
 ```
 
-Print the existing partitions to make sure it's the right device:
+查看现有分区以确保它是正确的设备：
 
-```console
+```bash
 $ doas disklabel -h sd2
 ```
 
-Initialize the disk by creating an `a` partition with FS type `RAID` and size of 25 Megabytes:
+通过创建 FS 类型为`RAID`且大小为 25 MB 的`a`分区来初始化磁盘：
 
-```console
+```bash
 $ doas fdisk -giy sd2
 Writing MBR at offset 0.
 Writing GPT.
@@ -1230,18 +1266,18 @@ sd2> q
 No label changes
 ```
 
-Encrypt with bioctl:
+使用 bioctl 加密：
 
-```console
+```bash
 $ doas bioctl -c C -l sd2a softraid0
 New passphrase:
 Re-type passphrase:
 softraid0: CRYPTO volume attached as sd3
 ```
 
-Create an `i` partition on the new crypto volume and the filesystem:
+在新的加密卷和文件系统上创建一个`i`分区：
 
-```console
+```bash
 $ doas fdisk -giy sd3
 Writing MBR at offset 0.
 Writing GPT.
@@ -1259,9 +1295,9 @@ No label changes.
 $ doas newfs sd3i
 ```
 
-Mount the filesystem and copy the temporary directory with the keyring:
+挂载文件系统复制包含密钥环的临时目录：
 
-```console
+```bash
 $ doas mkdir /mnt/encrypted-storage
 
 $ doas mount /dev/sd3i /mnt/encrypted-storage
@@ -1269,27 +1305,27 @@ $ doas mount /dev/sd3i /mnt/encrypted-storage
 $ doas cp -avi $GNUPGHOME /mnt/encrypted-storage
 ```
 
-**Note** If you plan on setting up multiple keys, keep the backup mounted or remember to terminate the gpg process before [saving](https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056353.html).
+**注意** 如果您计划设置多个密钥，请保持备份介质挂载状态或记住在[保存](https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056353.html)之前终止 gpg 进程。
 
-Otherwise, unmount and disconnect the encrypted volume:
+卸载、关闭和断开加密卷：
 
-```console
+```bash
 $ doas umount /mnt/encrypted-storage
 
 $ doas bioctl -d sd3
 ```
 
-See [OpenBSD FAQ#14](https://www.openbsd.org/faq/faq14.html#softraidCrypto) for more information.
+请参阅 [OpenBSD FAQ#14](https://www.openbsd.org/faq/faq14.html#softraidCrypto) 了解更多信息。
 
-# Export public keys
+# 导出公钥
 
-**Important** Without the *public* key, you will not be able to use GPG to encrypt, decrypt, nor sign messages. However, you will still be able to use YubiKey for SSH authentication.
+**重要** 如果没有*公钥*，您将无法使用 GPG 来加密、解密或签署消息。 但是，您仍然可以使用 YubiKey 进行 SSH 身份验证。
 
-Create another partition on the removable storage device to store the public key, or reconnect networking and upload to a key server.
+在可移动存储设备上创建另一个分区来存储公钥，或者重新连接网络并上传到密钥服务器。
 
 **Linux**
 
-```console
+```bash
 $ sudo fdisk /dev/mmcblk0
 
 Welcome to fdisk (util-linux 2.36.1).
@@ -1319,7 +1355,7 @@ $ gpg --armor --export $KEYID | sudo tee /mnt/public/gpg-$KEYID-$(date +%F).asc
 
 **OpenBSD**
 
-```console
+```bash
 $ doas disklabel -E sd2
 Label editor (enter '?' for help at any prompt)
 sd2> a b
@@ -1341,15 +1377,15 @@ $ gpg --armor --export $KEYID | doas tee /mnt/public/gpg-$KEYID-$(date +%F).asc
 
 **Windows**
 
-```console
+```bash
 $ gpg -o \path\to\dir\pubkey.gpg --armor --export $KEYID
 ```
 
 **Keyserver**
 
-(Optional) Upload the public key to a [public keyserver](https://debian-administration.org/article/451/Submitting_your_GPG_key_to_a_keyserver):
+（可选）将公钥上传到[公钥服务器](https://debian-administration.org/article/451/Submitting_your_GPG_key_to_a_keyserver)：
 
-```console
+```bash
 $ gpg --send-key $KEYID
 
 $ gpg --keyserver pgp.mit.edu --send-key $KEYID
@@ -1359,13 +1395,13 @@ $ gpg --keyserver keys.gnupg.net --send-key $KEYID
 $ gpg --keyserver hkps://keyserver.ubuntu.com:443 --send-key $KEYID
 ```
 
-After some time, the public key will propagate to [other](https://pgp.key-server.io/pks/lookup?search=doc%40duh.to&fingerprint=on&op=vindex) [servers](https://pgp.mit.edu/pks/lookup?search=doc%40duh.to&op=index).
+一段时间后，公钥将传播到[其他](https://pgp.key-server.io/pks/lookup?search=doc%40duh.to&fingerprint=on&op=vindex)[服务器](https:// pgp.mit.edu/pks/lookup?search=doc%40duh.to&op=index)。
 
-# Configure Smartcard
+# 配置智能卡
 
-Plug in a YubiKey and use GPG to configure it as a smartcard:
+插入 YubiKey 并使用 GPG 将其配置为智能卡：
 
-```console
+```bash
 $ gpg --card-edit
 
 Reader ...........: Yubico Yubikey 4 OTP U2F CCID
@@ -1391,46 +1427,46 @@ Authentication key: [none]
 General key info..: [none]
 ```
 
-Enter administrative mode:
+进入管理模式：
 
-```console
+```bash
 gpg/card> admin
 Admin commands are allowed
 ```
 
-**Note** If the card is locked, see [Reset](#reset).
+**注意** 如果卡被锁定，请参见[重置](#重置)。
 
 **Windows**
 
-Use the [YubiKey Manager](https://developers.yubico.com/yubikey-manager) application (note, this is not the similarly named older YubiKey NEO Manager) to enable CCID functionality.
+使用 [YubiKey Manager](https://developers.yubico.com/yubikey-manager) 应用程序（请注意，这不是名称类似的旧版 YubiKey NEO Manager）来启用 CCID 功能。
 
-## Enable KDF
+## 启用KDF
 
-Key Derived Function (KDF) enables YubiKey to store the hash of PIN, preventing the PIN from being passed as plain text. Note that this requires a relatively new version of GnuPG to work, and may not be compatible with other GPG clients (notably mobile clients). These incompatible clients will be unable to use the YubiKey GPG functions as the PIN will always be rejected. If you are not sure you will only be using your YubiKey on supported platforms, it may be better to skip this step.
+密钥派生函数 (KDF) 使 YubiKey 能够存储 PIN 的哈希值，从而防止 PIN 以纯文本形式传递。 请注意，这需要相对较新版本的 GnuPG 才能工作，并且可能与其他 GPG 客户端（尤其是移动客户端）不兼容。 这些不兼容的客户端将无法使用 YubiKey GPG 功能，因为 PIN 码将始终被拒绝。 如果您不确定仅在受支持的平台上使用 YubiKey，最好跳过此步骤。
 
-```console
+```bash
 gpg/card> kdf-setup
 ```
 
-## Change PIN
+## 修改PIN
 
-The [GPG interface](https://developers.yubico.com/PGP/) is separate from other modules on a Yubikey such as the [PIV interface](https://developers.yubico.com/PIV/Introduction/YubiKey_and_PIV.html). The GPG interface has its own *PIN*, *Admin PIN*, and *Reset Code* - these should be changed from default values!
+[GPG 接口](https://developers.yubico.com/PGP/) 与 Yubikey 上的其他模块分开，例如 [PIV 接口](https://developers.yubico.com/PIV/Introduction/YubiKey_and_PIV.html)。 GPG 界面有自己的 *PIN*、*Admin PIN* 和 *Reset Code* - 这些应该在使用前修改默认值！
 
-Entering the user *PIN* incorrectly three times will cause the PIN to become blocked; it can be unblocked with either the *Admin PIN* or *Reset Code*.
+错误输入用户 *PIN* 3 次将导致 PIN 被阻止； 可以使用*Admin PIN码*或*Reset Code*来解锁。
 
-Entering the *Admin PIN* or *Reset Code* incorrectly three times destroys all GPG data on the card. The Yubikey will have to be reconfigured.
+错误地输入*Admin PIN* 或*Reset Code* 3 将次会破坏卡上的所有 GPG 数据。必须重新配置 Yubikey。
 
-Name       | Default Value | Use
+名称       | 默认值 | 用途 
 -----------|---------------|-------------------------------------------------------------
-PIN        | `123456`      | decrypt and authenticate (SSH)
-Admin PIN  | `12345678`    | reset *PIN*, change *Reset Code*, add keys and owner information
-Reset code | _**None**_      | reset *PIN* ([more information](https://forum.yubico.com/viewtopicd01c.html?p=9055#p9055))
+PIN        | `123456`      | 解密和身份验证 (SSH) 
+Admin PIN  | `12345678`    | 重置*PIN*、更改*Reset Code*、添加密钥或所有者信息 
+Reset code | ***无***      | 重置*PIN*（[更多信息](https://forum.yubico.com/viewtopicd01c.html?p=9055#p9055)） 
 
-Values are valid up to 127 ASCII characters and must be at least 6 (*PIN*) or 8 (*Admin PIN*, *Reset Code*) characters. See the GnuPG documentation on [Managing PINs](https://www.gnupg.org/howtos/card-howto/en/ch03s02.html) for details.
+PIN的取值最多可包含 127 个 ASCII 字符，并且必须至少为 6位 (*PIN*) 或 8位（*Admin PIN*、*Reset Code*）字符。 有关详细信息，请参阅GnuPG 文档有关 [管理PIN](https://www.gnupg.org/howtos/card-howto/en/ch03s02.html) 的内容。
 
-To update the GPG PINs on the Yubikey:
+要更新 Yubikey 上的 GPG PIN：
 
-```console
+```bash
 gpg/card> passwd
 gpg: OpenPGP card no. D2760001240102010006055532110000 detected
 
@@ -1461,17 +1497,17 @@ Q - quit
 Your selection? q
 ```
 
-**Note** The number of retry attempts can be changed later with the following command, documented [here](https://docs.yubico.com/software/yubikey/tools/ykman/OpenPGP_Commands.html#ykman-openpgp-access-set-retries-options-pin-retries-reset-code-retries-admin-pin-retries):
+**注意** 稍后可以使用以下命令更改重试尝试次数，点击[此处](https://docs.yubico.com/software/yubikey/tools/ykman/OpenPGP_Commands.html#ykman-openpgp-access-set-retries-options-pin-retries-reset-code-retries-admin-pin-retries)查看详细说明：
 
 ```bash
 $ ykman openpgp access set-retries 5 5 5 -f -a YOUR_ADMIN_PIN
 ```
 
-## Set information
+## 设置信息
 
-Some fields are optional.
+些字段是可选的。
 
-```console
+```bash
 gpg/card> name
 Cardholder's surname: Duh
 Cardholder's given name: Dr
@@ -1508,13 +1544,13 @@ General key info..: [none]
 gpg/card> quit
 ```
 
-# Transfer keys
+# 传输密钥
 
-**Important** Transferring keys to YubiKey using `keytocard` is a destructive, one-way operation only. Make sure you've made a backup before proceeding: `keytocard` converts the local, on-disk key into a stub, which means the on-disk copy is no longer usable to transfer to subsequent security key devices or mint additional keys.
+**重要** 使用`keytocard`将密钥传输到 YubiKey 是一种破坏性的单向操作。 确保您在继续之前已进行备份，`keytocard`将本地磁盘上的密钥转换为存根，这意味着磁盘上的副本不再可用于传输到后续的安全密钥设备或派生其他密钥。
 
-Previous GPG versions required the `toggle` command before selecting keys. The currently selected key(s) are indicated with an `*`. When moving keys only one key should be selected at a time.
+以前的 GPG 版本需要在选择密钥之前使用“toggle”命令。 当前选择的密钥用`*`表示。 移动密钥时，一次只能选择一个密钥。
 
-```console
+```bash
 $ gpg --edit-key $KEYID
 
 Secret key is available.
@@ -1531,13 +1567,13 @@ ssb  rsa4096/0x3F29127E79649A3D
 [ultimate] (1). Dr Duh <doc@duh.to>
 ```
 
-## Signing
+## 签名密钥
 
-You will be prompted for the master key passphrase and Admin PIN.
+系统将提示您输入主密钥口令和Admin PIN。
 
-Select and transfer the signature key.
+选择并传输签名密钥。
 
-```console
+```bash
 gpg> key 1
 
 sec  rsa4096/0xFF3E7D88647EBCDB
@@ -1562,11 +1598,11 @@ user: "Dr Duh <doc@duh.to>"
 4096-bit RSA key, ID 0xBECFA3C1AE191D15, created 2016-05-24
 ```
 
-## Encryption
+## 加密密钥
 
-Type `key 1` again to de-select and `key 2` to select the next key:
+再次键入`key 1`以取消选择，并键入`key 2`以选择下一个密钥：
 
-```console
+```bash
 gpg> key 1
 
 gpg> key 2
@@ -1590,11 +1626,11 @@ Your selection? 2
 [...]
 ```
 
-## Authentication
+## 身份验证密钥
 
-Type `key 2` again to deselect and `key 3` to select the last key:
+再次键入`key 2`以取消选择，并键入`key 3`以选择最后一个密钥：
 
-```console
+```bash
 gpg> key 2
 
 gpg> key 3
@@ -1616,17 +1652,17 @@ Please select where to store the key:
 Your selection? 3
 ```
 
-Save and quit:
+保存并退出：
 
-```console
+```bash
 gpg> save
 ```
 
-# Verify card
+# 校验智能卡
 
-Verify the sub-keys have been moved to YubiKey as indicated by `ssb>`:
+验证子密钥已移动到 YubiKey，如`ssb>`所示：
 
-```console
+```bash
 $ gpg -K
 /tmp.FLZC0xcM/pubring.kbx
 -------------------------------------------------------------------------
@@ -1638,11 +1674,11 @@ ssb>  rsa4096/0x5912A795E90DD2CF 2017-10-09 [E] [expires: 2018-10-09]
 ssb>  rsa4096/0x3F29127E79649A3D 2017-10-09 [A] [expires: 2018-10-09]
 ```
 
-# Multiple YubiKeys
+# 多个YubiKey
 
-To provision additional security keys, restore the master key backup and repeat the [Configure Smartcard](#configure-smartcard) procedure.
+要配置其他安全密钥，请恢复主密钥备份并重复[配置智能卡](#配置智能卡) 过程。
 
-```console
+```bash
 $ mv -vi $GNUPGHOME $GNUPGHOME.1
 renamed '/tmp.FLZC0xcM' -> '/tmp.FLZC0xcM.1'
 
@@ -1652,45 +1688,45 @@ $ cp -avi /mnt/encrypted-storage/tmp.XXX $GNUPGHOME
 $ cd $GNUPGHOME
 ```
 
-## Switching between two or more Yubikeys
-	
-When you add a GPG key to a Yubikey using the *keytocard* command, GPG deletes the key from your keyring and adds a *stub* pointing to that exact Yubikey (the stub identifies the GPG KeyID and the Yubikey's serial number).
-	
-However, when you do this same operation for a second Yubikey, the stub in your keyring is overwritten by the *keytocard* operation and now the stub points to your second Yubikey. Adding more repeats this overwriting operation.
+## 在多个Yubikey间切换
 
-In other words, the stub will point ONLY to the LAST Yubikey written to.
+当您使用 *keytocard* 命令将 GPG 密钥添加到 Yubikey 时，GPG 会从密钥环中删除该密钥，并添加一个指向该确切 Yubikey 的 *存根*（存根标识 GPG KeyID 和 Yubikey 的序列号）。
 	
-When using GPG key operations with the GPG key you placed onto the Yubikeys, GPG will request a specific Yubikey asking that you insert a Yubikey with a given serial number (referenced by the stub). GPG will not recognise another Yubikey with a different serial number without manual intervention.
-	
-You can force GPG to scan the card and re-create the stubs to point to another Yubikey. 
+但是，当您对第二个 Yubikey 执行相同的操作时，密钥环中的存根将被 *keytocard* 操作覆盖，现在存根指向您的第二个 Yubikey。 添加更多会重复此覆盖操作。
 
-Having created two (or more Yubikeys) with the same GPG key (as described above) where the stubs are pointing to the second Yubikey:
+换句话说，存根将仅指向最后写入的 Yubikey。
 	
-Insert the first Yubikey (which has a different serial number) and run the following command:
+当使用 GPG 密钥操作与您放置在 Yubikey 上的 GPG 密钥时，GPG 将请求特定的 Yubikey，要求您插入具有给定序列号（由存根引用）的 Yubikey。 如果没有人工干预，GPG 将无法识别具有不同序列号的另一个 Yubikey。
 	
-```console
+您可以强制 GPG 扫描卡并重新创建存根以指向另一个 Yubikey。
+
+使用相同的 GPG 密钥（如上所述）创建两个（或更多 Yubikey），其中存根指向第二个 Yubikey：
+	
+插入第一个 Yubikey（具有不同的序列号）并运行以下命令：
+	
+```bash
 $  gpg-connect-agent "scd serialno" "learn --force" /bye
 ```
-GPG will then scan your first Yubikey for GPG keys and recreate the stubs to point to the GPG keyID and Yubikey Serial number of this first Yubikey.
+然后，GPG 将扫描您的第一个 Yubikey 中的 GPG 密钥，并重新创建存根以指向第一个 Yubikey 的 GPG keyID 和 Yubikey 序列号。
 	
-To return to using the second Yubikey just repeat (insert other Yubikey and re-run command).
+要返回使用第二个 Yubikey，只需重复（插入其他 Yubikey 并重新运行命令）。
 	
-Obviously this command is not easy to remember so it is recommended to either create a script or a shell alias to make this more user friendly.
-	
-# Cleanup
+显然这个命令不容易记住，因此建议创建一个脚本或 shell 别名，以使其更加用户友好。
 
-Before finishing the setup, ensure you have done the following:
+# 清理
 
-* Saved encryption, signing and authentication sub-keys to YubiKey (`gpg -K` should show `ssb>` for sub-keys).
-* Saved the YubiKey user and admin PINs which are different and were changed from default values.
-* Saved the password to the GPG master key in a secure, long-term location.
-* Saved a copy of the master key, sub-keys and revocation certificate on an encrypted volume, to be stored offline.
-* Saved the password to that LUKS-encrypted volume in a secure, long-term location (separate from the device itself).
-* Saved a copy of the public key somewhere easily accessible later.
+在完成设置之前，请确保您已完成以下操作：
 
-Now reboot or [securely delete](http://srm.sourceforge.net/) `$GNUPGHOME` and remove the secret keys from the GPG keyring:
+* 将加密、签名和身份验证子密钥保存到 YubiKey（执行`gpg -K`查看子密钥应显示`ssb>`）。
+* 保存了已修改过的 YubiKey 用户和管理员 PIN。
+* 将 GPG 主密钥的口令保存在安全、长期的位置。
+* 将主密钥、子密钥和吊销证书的副本保存在离线存储的加密卷上。
+* 将 LUKS 加密卷的口令保存在安全、长期的位置（与设备本身分别放置）。
+* 将公钥的副本保存在以后易于访问的地方。
 
-```console
+现在重新启动或[安全删除](http://srm.sourceforge.net/) `$GNUPGHOME` 并从 GPG 密钥环中删除密钥：
+
+```bash
 $ gpg --delete-secret-key $KEYID
 
 $ sudo srm -r $GNUPGHOME || sudo rm -rf $GNUPGHOME
@@ -1698,23 +1734,23 @@ $ sudo srm -r $GNUPGHOME || sudo rm -rf $GNUPGHOME
 $ unset GNUPGHOME
 ```
 
-**Important** Make sure you have securely erased all generated keys and revocation certificates if an ephemeral enviroment was not used!
+**重要** 如果未使用临时环境，请确保您已安全删除所有生成的密钥和吊销证书！
 
-# Using keys
+# 使用密钥
 
-Download [drduh/config/gpg.conf](https://github.com/drduh/config/blob/master/gpg.conf):
+下载 [drduh/config/gpg.conf](https://github.com/drduh/config/blob/master/gpg.conf):
 
-```console
+```bash
 $ cd ~/.gnupg ; wget https://raw.githubusercontent.com/drduh/config/master/gpg.conf
 
 $ chmod 600 gpg.conf
 ```
 
-Install the required packages and mount the non-encrypted volume created earlier:
+安装所需的软件包并挂载之前创建的非加密卷：
 
 **Linux**
 
-```console
+```bash
 $ sudo apt update && sudo apt install -y gnupg2 gnupg-agent gnupg-curl scdaemon pcscd
 
 $ sudo mount /dev/mmcblk0p2 /mnt
@@ -1722,24 +1758,24 @@ $ sudo mount /dev/mmcblk0p2 /mnt
 
 **OpenBSD**
 
-```console
+```bash
 $ doas pkg_add gnupg pcsc-tools
 
 $ doas mount /dev/sd2b /mnt
 ```
 
-Import the public key file:
+导入公钥文件：
 
-```console
+```bash
 $ gpg --import /mnt/gpg-0x*.asc
 gpg: key 0xFF3E7D88647EBCDB: public key "Dr Duh <doc@duh.to>" imported
 gpg: Total number processed: 1
 gpg:               imported: 1
 ```
 
-Or download the public key from a keyserver:
+或者从密钥服务器下载公钥：
 
-```console
+```bash
 $ gpg --recv $KEYID
 gpg: requesting key 0xFF3E7D88647EBCDB from hkps server hkps.pool.sks-keyservers.net
 [...]
@@ -1748,9 +1784,9 @@ gpg: Total number processed: 1
 gpg:               imported: 1
 ```
 
-Edit the master key to assign it ultimate trust by selecting `trust` and `5`:
+通过选择`trust`和`5`编辑主密钥以为其分配最终信任：
 
-```console
+```bash
 $ export KEYID=0xFF3E7D88647EBCDB
 
 $ gpg --edit-key $KEYID
@@ -1786,9 +1822,9 @@ sub  4096R/0x3F29127E79649A3D  created: 2017-10-09  expires: 2018-10-09  usage: 
 gpg> quit
 ```
 
-Remove and re-insert YubiKey and verify the status:
+移除并重新插入 YubiKey 并验证状态：
 
-```console
+```bash
 $ gpg --card-status
 Reader ...........: Yubico YubiKey OTP FIDO CCID 00 00
 Application ID ...: D2760001240102010006055532110000
@@ -1822,25 +1858,25 @@ ssb>  4096R/0x3F29127E79649A3D  created: 2017-10-09  expires: 2018-10-09
                       card-no: 0006 05553211
 ```
 
-`sec#` indicates the master key is not available (as it should be stored encrypted offline).
+`sec#`表示主密钥不可用（因为它应该已离线加密存储）。
 
-**Note** If you see `General key info..: [none]` in the output instead - go back and import the public key using the previous step.
+**注意** 如果您在输出中看到 `General key info..: [none]` - 返回并使用上一步导入公钥。
 
-Encrypt a message to your own key (useful for storing password credentials and other data):
+使用您自己的密钥将消息加密（对于存储密码凭据和其他数据很有用）：
 
-```console
+```bash
 $ echo "test message string" | gpg --encrypt --armor --recipient $KEYID -o encrypted.txt
 ```
 
-To encrypt to multiple recipients (or to multiple keys):
+要为多个收件人（或多个密钥）加密：
 
-```console
+```bash
 $ echo "test message string" | gpg --encrypt --armor --recipient $KEYID_0 --recipient $KEYID_1 --recipient $KEYID_2 -o encrypted.txt
 ```
 
-Decrypt the message:
+解密消息：
 
-```console
+```bash
 $ gpg --decrypt --armor encrypted.txt
 gpg: anonymous recipient; trying secret key 0x0000000000000000 ...
 gpg: okay, we are the anonymous recipient.
@@ -1848,15 +1884,15 @@ gpg: encrypted with RSA key, ID 0x0000000000000000
 test message string
 ```
 
-Sign a message:
+签署消息：
 
-```console
+```bash
 $ echo "test message string" | gpg --armor --clearsign > signed.txt
 ```
 
-Verify the signature:
+验证签名：
 
-```console
+```bash
 $ gpg --verify signed.txt
 gpg: Signature made Wed 25 May 2016 00:00:00 AM UTC
 gpg:                using RSA key 0xBECFA3C1AE191D15
@@ -1865,7 +1901,7 @@ Primary key fingerprint: 011C E16B D45B 27A5 5BA8  776D FF3E 7D88 647E BCDB
      Subkey fingerprint: 07AA 7735 E502 C5EB E09E  B8B0 BECF A3C1 AE19 1D15
 ```
 
-Use a [shell function](https://github.com/drduh/config/blob/master/zshrc) to make encrypting files easier:
+使用[shell函数](https://github.com/drduh/config/blob/master/zshrc)使加密文件更容易：
 
 ```
 secret () {
@@ -1879,7 +1915,7 @@ reveal () {
 }
 ```
 
-```console
+```bash
 $ secret document.pdf
 document.pdf -> document.pdf.1580000000.enc
 
@@ -1890,41 +1926,41 @@ gpg: encrypted with RSA key, ID 0x0000000000000000
 document.pdf.1580000000.enc -> document.pdf
 ```
 
-# Rotating keys
+# 密钥轮替
 
-PGP does not provide forward secrecy - a compromised key may be used to decrypt all past messages. Although keys stored on YubiKey are difficult to steal, it is not impossible - the key and PIN could be taken, or a vulnerability may be discovered in key hardware or the random number generator used to create them, for example. Therefore, it is good practice to occassionally rotate sub-keys.
+PGP 不提供前向保密 - 泄露的密钥可用于解密所有过去的消息。 尽管 YubiKey 上存储的密钥很难被窃取，但这并非不可能 - 例如，密钥和 PIN 可能会被盗取，或者可能会在密钥硬件或用于创建它们的随机数生成器中发现漏洞。 因此，偶尔轮换子密钥是一个很好的做法。
 
-When a sub-key expires, it can either be renewed or replaced. Both actions require access to the offline master key. Renewing sub-keys by updating their expiration date indicates you are still in possession of the offline master key and is more convenient.
+当子密钥过期时，可以更新或更换。 这两个操作都需要访问离线主密钥。 通过更新子密钥的过期日期来更新子密钥表明您仍然拥有离线主密钥，并且更加方便。
 
-Replacing keys, on the other hand, is less convenient but more secure: the new sub-keys will **not** be able to decrypt previous messages, authenticate with SSH, etc. Contacts will need to receive the updated public key and any encrypted secrets need to be decrypted and re-encrypted to new sub-keys to be usable. This process is functionally equivalent to "losing" the YubiKey and provisioning a new one. However, you will always be able to decrypt previous messages using the offline encrypted backup of the original keys.
+另一方面，替换密钥不太方便，但更安全：新的子密钥将**无法**解密以前的消息、使用 SSH 进行身份验证等。联系人将需要接收更新的公钥，并且任何加密的秘密都需要解密并重新加密为新的子密钥才能使用。 这一过程在功能上相当于“丢失”YubiKey 并配置一个新的。 但是，您始终可以使用原始密钥的离线加密备份来解密以前的消息。
 
-Neither rotation method is superior and it's up to personal philosophy on identity management and individual threat model to decide which one to use, or whether to expire sub-keys at all. Ideally, sub-keys would be ephemeral: used only once for each encryption, signing and authentication event, however in practice that is not really feasible nor worthwhile with YubiKey. Advanced users may want to dedicate an offline device for more frequent key rotations and ease of provisioning.
+两种轮换方法都不是优越的，并且取决于个人的身份管理理念和个人威胁模型来决定使用哪一种，或者是否使子密钥过期。 理想情况下，子密钥应该是短暂的：每个加密、签名和身份验证事件仅使用一次，但实际上这对于 YubiKey 来说并不可行也不值得。 高级用户可能希望使用离线设备来实现更频繁的密钥轮换和简化配置。
 
-## Setup environment
+## 设置环境
 
-To renew or rotate sub-keys, follow the same process as generating keys: boot to a secure environment, install required software and disconnect networking.
+要更新或轮替子密钥，请遵循与生成密钥相同的过程：启动到安全环境，安装所需的软件并断开网络连接。
 
-Connect the offline secret storage device with the master keys and identify the disk label:
+连接离线存储主密钥的存储设备并识别磁盘标签：
 
-```console
+```bash
 $ sudo dmesg | tail
 mmc0: new high speed SDHC card at address a001
 mmcblk0: mmc0:a001 SS16G 14.8 GiB (ro)
 mmcblk0: p1 p2
 ```
 
-Decrypt and mount the offline volume:
+解密并挂载离线卷：
 
-```console
+```bash
 $ sudo cryptsetup luksOpen /dev/mmcblk0p1 secret
 Enter passphrase for /dev/mmcblk0p1:
 
 $ sudo mount /dev/mapper/secret /mnt/encrypted-storage
 ```
 
-Import the master key and configuration to a temporary working directory. Note that Windows users should import mastersub.gpg:
+将主密钥和配置导入到临时工作目录。 请注意，Windows 用户应导入 mastersub.gpg：
 
-```console
+```bash
 $ export GNUPGHOME=$(mktemp -d -t gnupg_$(date +%Y%m%d%H%M)_XXX)
 
 $ gpg --import /mnt/encrypted-storage/tmp.XXX/mastersub.key
@@ -1932,9 +1968,9 @@ $ gpg --import /mnt/encrypted-storage/tmp.XXX/mastersub.key
 $ cp -v /mnt/encrypted-storage/tmp.XXX/gpg.conf $GNUPGHOME
 ```
 
-Edit the master key:
+编辑主密钥：
 
-```console
+```bash
 $ export KEYID=0xFF3E7D88647EBCDB
 
 $ gpg --expert --edit-key $KEYID
@@ -1943,13 +1979,13 @@ Secret key is available
 [...]
 ```
 
-## Renewing sub-keys
+## 更新子密钥
 
-Renewing sub-keys is simpler: you do not need to generate new keys, move keys to the YubiKey, or update any SSH public keys linked to the GPG key.  All you need to do is to change the expiry time associated with the public key (which requires access to the master key you just loaded) and then to export that public key and import it on any computer where you wish to use the **GPG** (as distinct from the SSH) key.
+更新子密钥更简单：您不需要生成新密钥、将密钥移至 YubiKey 或更新链接到 GPG 密钥的任何 SSH 公钥。 您需要做的就是更改与公钥关联的到期时间（这需要访问您刚刚加载的主密钥），然后导出该公钥并将其导入到您希望使用 **GPG 的任何计算机上 **（与 SSH 不同）密钥。
 
-To change the expiration date of all sub-keys, start by selecting all keys:
+要更改所有子密钥的到期日期，请首先选择所有子密钥：
 
-```console
+```bash
 $ gpg --edit-key $KEYID
 
 Secret key is available.
@@ -2011,9 +2047,9 @@ ssb*  rsa4096/0x3F29127E79649A3D
 [ultimate] (1). Dr Duh <doc@duh.to>
 ```
 
-Then, use the `expire` command to set a new expiration date.  (Despite the name, this will not cause currently valid keys to become expired.)
+然后，使用`expire`命令设置新的到期日期。 （尽管这个命令的名称叫做“过期”，但这不会导致当前有效的密钥过期。）
 
-```console
+```bash
 gpg> expire
 Changing expiration time for a subkey.
 Please specify how long the key should be valid.
@@ -2024,58 +2060,58 @@ Please specify how long the key should be valid.
       <n>y = key expires in n years
 Key is valid for? (0)
 ```
-Follow these prompts to set a new expiration date, then `save` to save your changes.
+按照这些提示设置新的到期日期，然后`保存`以保存更改。
 
-Next, export the public key:
+接下来，导出公钥：
 
-```console
+```bash
 $ gpg --armor --export $KEYID > gpg-$KEYID-$(date +%F).asc
 ```
 
-Transfer that public key to the computer from which you use your GPG key, and then import it with:
+将该公钥传输到您使用 GPG 密钥的计算机，然后使用以下命令导入：
 
-```console
+```bash
 $ gpg --import gpg-0x*.asc
 ```
 
-This will extend the validity of your GPG key and will allow you to use it for SSH authorization.  Note that you do _not_ need to update the SSH public key located on remote servers.
+这将延长您的 GPG 密钥的有效性，并允许您使用它进行 SSH 授权。 请注意，您不需要更新位于远程服务器上的 SSH 公钥。
 
-## Rotating keys
+## 轮替子密钥
 
-Rotating keys is more a bit more involved.  First, follow the original steps to generate each sub-key. Previous sub-keys may be kept or deleted from the identity.
+轮替子密钥涉及更多一点。 首先，按照原来的步骤生成每个子密钥。 先前的子密钥可以保留或从身份中删除。
 
-Finish by exporting new keys:
+通过导出新密钥来完成：
 
-```console
+```bash
 $ gpg --armor --export-secret-keys $KEYID > $GNUPGHOME/mastersub.key
 
 $ gpg --armor --export-secret-subkeys $KEYID > $GNUPGHOME/sub.key
 ```
 
-Copy the **new** temporary working directory to encrypted offline storage, which should still be mounted:
+将**新**临时工作目录复制到加密的离线存储，刚才我们并没有卸载它：
 
-```console
+```bash
 $ sudo cp -avi $GNUPGHOME /mnt/encrypted-storage
 ```
 
-There should now be at least two versions of the master and sub-keys backed up:
+现在应该至少备份两个版本的主密钥和子密钥：
 
-```console
+```bash
 $ ls /mnt/encrypted-storage
 lost+found  tmp.ykhTOGjR36  tmp.2gyGnyCiHs
 ```
 
-Unmount and close the encrypted volume:
+卸载并关闭加密卷：
 
-```console
+```bash
 $ sudo umount /mnt/encrypted-storage
 
 $ sudo cryptsetup luksClose /dev/mapper/secret
 ```
 
-Export the updated public key:
+导出更新后的公钥：
 
-```console
+```bash
 $ sudo mkdir /mnt/public
 
 $ sudo mount /dev/mmcblk0p2 /mnt/public
@@ -2085,49 +2121,49 @@ $ gpg --armor --export $KEYID | sudo tee /mnt/public/$KEYID-$(date +%F).asc
 $ sudo umount /mnt/public
 ```
 
-Disconnect the storage device and follow the original steps to transfer new keys (4, 5 and 6) to the YubiKey, replacing existing ones. Reboot or securely erase the GPG temporary working directory.
+断开存储设备并按照原来的步骤将新密钥（4、5 和 6）传输到 YubiKey，替换现有密钥。 重新启动或安全擦除 GPG 临时工作目录。
 
-# Adding notations
+# 添加符号
 
-Notations can be added to user ID(s) and can be used in conjunction with [Keyoxide](https://keyoxide.org) to create [OpenPGP identity proofs](https://keyoxide.org/guides/openpgp-proofs).
+可以将符号添加到用户 ID 中，并可以与 [Keyicide](https://keyicide.org) 结合使用来创建 [OpenPGP 身份证明](https://keyoxy.org/guides/openpgp-proofs) 。
 
-Adding notations requires access to the master key so we can follow the setup instructions taken from this [section](#setup-environment) of this guide.
+添加符号需要访问主密钥，因此我们可以按照本指南的此[部分](#设置环境)中的设置说明进行操作。
 
-Please note that there is no need to connect the Yubikey to the setup environment and that we do not need to generate new keys, move keys to the YubiKey, or update any SSH public keys linked to the GPG key.
+请注意，无需将 Yubikey 连接到设置环境，也无需生成新密钥、将密钥移至 YubiKey 或更新链接到 GPG 密钥的任何 SSH 公钥。
 
-After having completed the environment setup, it is possible to follow any of the guides listed under "Adding proofs" in the Keyoxide ["Guides"](https://keyoxide.org/guides/) page __up until the notation is saved using the `save` command__.
+完成环境设置后，可以遵循 Keyoxy [“指南”](https://keyoxy.org/guides/) 页面 **up 中“添加证明”下列出的任何指南，直到使用保存符号 `save`命令**。
 
-At this point the public key can be exported:
+此时就可以导出公钥了：
 
-```console
+```bash
 $ gpg --export $KEYID > pubkey.asc
 ```
 
-The public key can now be transferred to the computer where the GPG key is used and it is imported with:
+现在可以将公钥传输到使用 GPG 密钥的计算机，并使用以下命令导入：
 
-```console
+```bash
 $ gpg --import pubkey.asc
 ```
 
-N.B.: The `showpref` command can be issued to ensure that the notions were correctly added.
+注意：可以发出`showpref`命令来确保正确添加概念。
 
-It is now possible to continue following the Keyoxide guide and upload the key to WKD or to keys.openpgp.org.
+现在可以继续遵循 Keyoxy 指南并将密钥上传到 WKD 或 keys.openpgp.org。
 
 # SSH
 
-**Tip** If you want to use a YubiKey for SSH only (and don't really care about PGP/GPG), then [since OpenSSH v8.2](https://www.openssh.com/txt/release-8.2) you alternatively can simply `ssh-keygen -t ed25519-sk` (without requiring anything else from this guide!), as explained [in this guide](https://github.com/vorburger/vorburger.ch-Notes/blob/develop/security/ed25519-sk.md). Yubico also recently announced support for resident ssh keys under OpenSSH 8.2+ on their blue "security key 5 nfc" as mentioned in their [blog post](https://www.yubico.com/blog/github-now-supports-ssh-security-keys/)._
+**提示** 如果您只想将 YubiKey 用于 SSH（并且并不真正关心 PGP/GPG），那么 [自 OpenSSH v8.2 起](https://www.openssh.com/txt/release-8.2)您也可以简单地执行`ssh-keygen -t ed25519-sk`（不需要本指南中的任何其他内容！），如[本指南中](https://github.com/vorburger/vorburger.ch-Notes/blob/develop/security/ed25519-sk.md)。 Yubico 最近还宣布在其蓝色“security key”上支持 OpenSSH 8.2+ 下的驻留 ssh 密钥，如其[博客文章](https://www.yubico.com/blog/github-now-supports-ssh-security-keys/)。
 
-[gpg-agent](https://wiki.archlinux.org/index.php/GnuPG#SSH_agent) supports the OpenSSH ssh-agent protocol (`enable-ssh-support`), as well as Putty's Pageant on Windows (`enable-putty-support`). This means it can be used instead of the traditional ssh-agent / pageant. There are some differences from ssh-agent, notably that gpg-agent does not _cache_ keys rather it converts, encrypts and stores them - persistently - as GPG keys and then makes them available to ssh clients. Any existing ssh private keys that you'd like to keep in `gpg-agent` should be deleted after they've been imported to the GPG agent.
+[gpg-agent](https://wiki.archlinux.org/index.php/GnuPG#SSH_agent) 支持 OpenSSH ssh-agent 协议 (`enable-ssh-support`)，以及 Windows 上的 Putty's Pageant  (`enable-putty-support`)。 这意味着它可以用来代替传统的 ssh-agent / pageant。 与 ssh-agent 存在一些差异，值得注意的是 gpg-agent 不会 *缓存* 密钥，而是将它们转换、加密并持久存储为 GPG 密钥，然后将它们提供给 ssh 客户端。 您想要保留在`gpg-agent`中的任何现有 ssh 私钥应在导入到 GPG agent 后删除。
 
-When importing the key to `gpg-agent`, you'll be prompted for a passphrase to protect that key within GPG's key store - you may want to use the same passphrase as the original's ssh version. GPG can both cache passphrases for a determined period (ref. `gpg-agent`'s various `cache-ttl` options), and since version 2.1 can store and fetch passphrases via the macOS keychain. Note than when removing the old private key after importing to `gpg-agent`, keep the `.pub` key file around for use in specifying ssh identities (e.g. `ssh -i /path/to/identity.pub`).
+将密钥导入到`gpg-agent`时，系统会提示您输入口令以保护 GPG 密钥存储中的该密钥 - 您也可以使用与原始 ssh 版本相同的口令。 GPG 可以在确定的时间内缓存口令（参考 `gpg-agent` 的各种 `cache-ttl` 选项），并且自 2.1 版本起可以通过 macOS 钥匙串存储和获取密码。 请注意，在导入到`gpg-agent`后删除旧私钥时，请保留`.pub`密钥文件以用于指定 ssh 身份（例如`ssh -i /path/to/identity.pub`）。
 
-Probably the biggest thing missing from `gpg-agent`'s ssh agent support is being able to remove keys. `ssh-add -d/-D` have no effect. Instead, you need to use the `gpg-connect-agent` utility to lookup a key's keygrip, match that with the desired ssh key fingerprint (as an MD5) and then delete that keygrip. The [gnupg-users mailing list](https://lists.gnupg.org/pipermail/gnupg-users/2016-August/056499.html) has more information.
+也许`gpg-agent`的 ssh 代理支持中缺少的最大的事情就是能够删除密钥。 `ssh-add -d/-D` 没有效果。 相反，您需要使用`gpg-connect-agent`实用程序来查找密钥的 keygrip，将其与所需的 ssh 密钥指纹（MD5）进行匹配，然后删除该 keygrip。 [gnupg-users 邮件列表](https://lists.gnupg.org/pipermail/gnupg-users/2016-August/056499.html) 有更多信息。
 
-## Create configuration
+## 创建配置
 
-Create a hardened configuration for gpg-agent by downloading [drduh/config/gpg-agent.conf](https://github.com/drduh/config/blob/master/gpg-agent.conf):
+通过下载 [drduh/config/gpg-agent.conf](https://github.com/drduh/config/blob/master/gpg-agent.conf) 为 gpg-agent 创建加固配置：
 
-```console
+```bash
 $ cd ~/.gnupg
 
 $ wget https://raw.githubusercontent.com/drduh/config/master/gpg-agent.conf
@@ -2139,71 +2175,71 @@ max-cache-ttl 120
 pinentry-program /usr/bin/pinentry-curses
 ```
 
-**Important** The `cache-ttl` options do **NOT** apply when using a YubiKey as a smartcard as the PIN is [cached by the smartcard itself](https://dev.gnupg.org/T3362). Therefore, in order to clear the PIN from cache (smartcard equivalent to `default-cache-ttl` and `max-cache-ttl`), you need to unplug the YubiKey, or set the `forcesig` flag when editing the card to be prompted for the PIN each time.
+**重要** 当使用 YubiKey 作为智能卡时，`cache-ttl`选项**不**适用，因为 PIN 是[由智能卡本身缓存](https://dev.gnupg.org/T3362) 。 因此，为了从缓存中清除 PIN（智能卡相当于 `default-cache-ttl` 和 `max-cache-ttl`），您需要拔下 YubiKey，或者在编辑卡时将 `forcesig` 标志设置为 每次都会提示输入 PIN。
 
-**Tip** Set `pinentry-program /usr/bin/pinentry-gnome3` for a GUI-based prompt. If the _pinentry_ graphical dialog doesn't show and you get this error: `sign_and_send_pubkey: signing failed: agent refused operation`, you may need to install the `dbus-user-session` package and restart the computer for the `dbus` user session to be fully inherited; this is because behind the scenes, `pinentry` complains about `No $DBUS_SESSION_BUS_ADDRESS found`, falls back to `curses` but doesn't find the expected `tty`.
+**提示** 设置 `pinentry-program /usr/bin/pinentry-gnome3` 以获得基于 GUI 的提示。 如果 *pinentry* 图形对话框未显示，并且您收到此错误：`sign_and_send_pubkey: signing failed: agent refused operation`，您可能需要安装`dbus-user-session`包并重新启动计算机以使`dbus`用户会话被完全继承； 这是因为在幕后，`pinentry`抱怨`No $DBUS_SESSION_BUS_ADDRESS found`，回退到`curses`，但没有找到预期的`tty`。
 
-On macOS, use `brew install pinentry-mac` and set the program path to `pinentry-program /usr/local/bin/pinentry-mac` for Intel Macs, `/opt/homebrew/bin/pinentry-mac` for ARM/Apple Silicon Macs or `pinentry-program /usr/local/MacGPG2/libexec/pinentry-mac.app/Contents/MacOS/pinentry-mac` if using MacGPG Suite. For the configuration to take effect you have to run `gpgconf --kill gpg-agent`.
+在 macOS 上，使用`brew install pinentry-mac`并将程序路径设置为`pinentry-program /usr/local/bin/pinentry-mac`（对于 Intel处理器），`/opt/homebrew/bin/pinentry-mac`（对于 ARM处理器） 或 `pinentry-program /usr/local/MacGPG2/libexec/pinentry-mac.app/Contents/MacOS/pinentry-mac`（如果使用 MacGPG 套件）。 要使配置生效，您必须运行`gpgconf --kill gpg-agent`。
 
-## Replace agents
+## 替换代理程序
 
-To launch `gpg-agent` for use by SSH, use the `gpg-connect-agent /bye` or `gpgconf --launch gpg-agent` commands.
+要启动`gpg-agent`以供 SSH 使用，请使用`gpg-connect-agent /bye`或`gpgconf --launch gpg-agent`命令。
 
-Add these to the shell `rc` file:
+将这些添加到 shell `rc` 文件中：
 
-```console
+```bash
 export GPG_TTY="$(tty)"
 export SSH_AUTH_SOCK="/run/user/$UID/gnupg/S.gpg-agent.ssh"
 gpg-connect-agent updatestartuptty /bye > /dev/null
 ```
 
-On modern systems, `gpgconf --list-dirs agent-ssh-socket` will automatically set `SSH_AUTH_SOCK` to the correct value and is better than hard-coding to `run/user/$UID/gnupg/S.gpg-agent.ssh`, if available:
+在现代系统上，如果可用时`gpgconf --list-dirs agent-ssh-socket`会自动将`SSH_AUTH_SOCK`设置为正确的值，并且比硬编码为`run/user/$UID/gnupg/S.gpg-agent.ssh`要好：
 
-```console
+```bash
 export GPG_TTY="$(tty)"
 export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
 gpgconf --launch gpg-agent
 ```
 
-If you use fish, the correct lines for your `config.fish` would look like this (consider putting them into the `is-interactive` block depending on your use case):
+如果您使用fish，`config.fish`的正确行将如下所示（考虑根据您的用例将它们放入`is-interactive`块中）：
 ```fish
 set -x GPG_TTY (tty)
 set -x SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
 gpgconf --launch gpg-agent
 ```
 
-Note that if you use `ForwardAgent` for ssh-agent forwarding, `SSH_AUTH_SOCK` only needs to be set on the *local* laptop (workstation), where the YubiKey is plugged in.  On the *remote* server that we SSH into, `ssh` will automatically set `SSH_AUTH_SOCK` to something like `/tmp/ssh-mXzCzYT2Np/agent.7541` when we connect.  We therefore do **NOT** manually set `SSH_AUTH_SOCK` on the server - doing so would break [SSH Agent Forwarding](#remote-machines-ssh-agent-forwarding).
+请注意，如果您使用`ForwardAgent`进行 ssh 代理转发，则只需在插入 YubiKey 的*本地*笔记本电脑（工作站）上设置`SSH_AUTH_SOCK`。在我们通过 SSH 连接的`远程`服务器上， 当我们连接时，`ssh`会自动将`SSH_AUTH_SOCK`设置为`/tmp/ssh-mXzCzYT2Np/agent.7541`这样。 因此，我们**不要**在服务器上手动设置 `SSH_AUTH_SOCK` - 这样做会破坏 [SSH代理转发](#SSH代理转发)。
 
-If you use `S.gpg-agent.ssh` (see [SSH Agent Forwarding](#remote-machines-ssh-agent-forwarding) for more info), `SSH_AUTH_SOCK` should also be set on the *remote*. However, `GPG_TTY` should not be set on the *remote*, explanation specified in that section.
+如果您使用 `S.gpg-agent.ssh` （请参阅 [SSH代理转发](#SSH代理转发) 了解更多信息），还应在 *远程主机* 上设置 `SSH_AUTH_SOCK`。 但是，不应在*远程主机*上设置`GPG_TTY`，该部分中指定了解释。
 
-## Copy public key
+## 复制公钥
 
-**Note** It is **not** necessary to import the corresponding GPG public key in order to use SSH.
+**注意** 使用 SSH **不需要**导入相应的 GPG 公钥。
 
-Copy and paste the output from `ssh-add` to the server's `authorized_keys` file:
+将`ssh-add`的输出复制并粘贴到服务器的`authorized_keys`文件中：
 
-```console
+```bash
 $ ssh-add -L
 ssh-rsa AAAAB4NzaC1yc2EAAAADAQABAAACAz[...]zreOKM+HwpkHzcy9DQcVG2Nw== cardno:000605553211
 ```
 
-## (Optional) Save public key for identity file configuration
+## （可选）为身份文件配置保存公钥
 
-By default, SSH attempts to use all the identities available via the agent. It's often a good idea to manage exactly which keys SSH will use to connect to a server, for example to separate different roles or [to avoid being fingerprinted by untrusted ssh servers](https://blog.filippo.io/ssh-whoami-filippo-io/). To do this you'll need to use the command line argument `-i [identity_file]` or the `IdentityFile` and `IdentitiesOnly` options in `.ssh/config`.
+默认情况下，SSH 尝试使用通过代理可用的所有身份。 准确管理 SSH 将使用哪些密钥连接到服务器通常是一个好主意，例如分离不同的角色或[避免被不受信任的 ssh 服务器指纹识别](https://blog.filippo.io/ssh-whoami-filippo-io/)。 为此，您需要使用命令行参数`-i [identity_file]`或`.ssh/config`中的`IdentityFile`和 `IdentitiesOnly`选项。
 
-The argument provided to `IdentityFile` is traditionally the path to the _private_ key file (for example `IdentityFile ~/.ssh/id_rsa`). For the YubiKey - indeed, in general for keys stored in an ssh agent - `IdentityFile` should point to the _public_ key file, `ssh` will select the appropriate private key from those available via the ssh agent. To prevent `ssh` from trying all keys in the agent use the `IdentitiesOnly yes` option along with one or more `-i` or `IdentityFile` options for the target host.
+提供给 `IdentityFile` 的参数传统上是 *私钥* 文件的路径（例如 `IdentityFile ~/.ssh/id_rsa`）。 对于 YubiKey - 事实上，一般来说，对于存储在 ssh 代理中的密钥 - `IdentityFile` 应指向 *公钥* 文件，`ssh` 将从通过 ssh 代理提供的密钥中选择适当的私钥。 要防止`ssh`尝试代理中的所有密钥，请对目标主机使用`IdentitiesOnly yes`选项以及一个或多个`-i`或`IdentityFile`选项。
 
-To reiterate, with `IdentitiesOnly yes`, `ssh` will not automatically enumerate public keys loaded into `ssh-agent` or `gpg-agent`. This means `publickey` authentication will not proceed unless explicitly named by `ssh -i [identity_file]` or in `.ssh/config` on a per-host basis.
+重申一下，使用`IdentitiesOnly yes`，`ssh`不会自动枚举加载到`ssh-agent`或`gpg-agent`中的公钥。 这意味着除非通过`ssh -i [identity_file]`或在每个主机的`.ssh/config`中显式命名，否则`公钥`身份验证将不会进行。
 
-In the case of YubiKey usage, to extract the public key from the ssh agent:
+在使用 YubiKey 的情况下，从 ssh 代理提取公钥：
 
-```console
+```bash
 $ ssh-add -L | grep "cardno:000605553211" > ~/.ssh/id_rsa_yubikey.pub
 ```
 
-Then you can explicitly associate this YubiKey-stored key for used with a host, `github.com` for example, as follows:
+然后，您可以显式关联此 YubiKey 存储的密钥以与主机`github.com`一起使用，例如，如下所示：
 
-```console
+```bash
 $ cat << EOF >> ~/.ssh/config
 Host github.com
     IdentitiesOnly yes
@@ -2211,9 +2247,9 @@ Host github.com
 EOF
 ```
 
-## Connect with public key authentication
+## 使用公钥认证连接
 
-```console
+```bash
 $ ssh git@github.com -vvv
 [...]
 debug2: key: cardno:000605553211 (0x1234567890),
@@ -2234,66 +2270,66 @@ debug1: Authentication succeeded (publickey).
 [...]
 ```
 
-**Tip** To make multiple connections or securely transfer many files, consider using the [ControlMaster](https://en.wikibooks.org/wiki/OpenSSH/Cookbook/Multiplexing) ssh option. Also see [drduh/config/ssh_config](https://github.com/drduh/config/blob/master/ssh_config).
+**提示** 要建立多个连接或安全地传输多个文件，请考虑使用 [ControlMaster](https://en.wikibooks.org/wiki/OpenSSH/Cookbook/Multiplexing) ssh 选项。 另请参阅 [drduh/config/ssh_config](https://github.com/drduh/config/blob/master/ssh_config)。
 
-## Import SSH keys
+## 导入SSH密钥
 
-If there are existing SSH keys that you wish to make available via `gpg-agent`, you'll need to import them. You should then remove the original private keys. When importing the key, `gpg-agent` uses the key's filename as the key's label; this makes it easier to follow where the key originated from. In this example, we're starting with just the YubiKey's key in place and importing `~/.ssh/id_rsa`:
+如果您希望通过`gpg-agent`提供现有的 SSH 密钥，则需要导入它们。 然后您应该删除原始私钥。 导入密钥时，`gpg-agent` 使用密钥的文件名作为密钥的标签； 这使得更容易追踪密钥的来源。 在此示例中，我们从 YubiKey 的密钥开始并导入 `~/.ssh/id_rsa`：
 
-```console
+```bash
 $ ssh-add -l
 4096 SHA256:... cardno:00060123456 (RSA)
 
 $ ssh-add ~/.ssh/id_rsa && rm ~/.ssh/id_rsa
 ```
 
-When invoking `ssh-add`, it will prompt for the SSH key's passphrase if present, then the `pinentry` program will prompt and confirm for a new passphrase to use to encrypt the converted key within the GPG key store.
+调用`ssh-add`时，它将提示输入 SSH 密钥的口令（如果存在），然后`pinentry`程序将提示并确认新的口令，用于加密 GPG 密钥存储中转换后的密钥。
 
-The migrated key will be listed in `ssh-add -l`:
+迁移的密钥将在`ssh-add -l`中列出：
 
-```console
+```bash
 $ ssh-add -l
 4096 SHA256:... cardno:00060123456 (RSA)
 2048 SHA256:... /Users/username/.ssh/id_rsa (RSA)
 ```
 
-Or to show the keys with MD5 fingerprints, as used by `gpg-connect-agent`'s `KEYINFO` and `DELETE_KEY` commands:
+或者显示带有 MD5 指纹的密钥，如 `gpg-connect-agent` 的 `KEYINFO` 和 `DELETE_KEY` 命令所使用的：
 
-```console
+```bash
 $ ssh-add -E md5 -l
 4096 MD5:... cardno:00060123456 (RSA)
 2048 MD5:... /Users/username/.ssh/id_rsa (RSA)
 ```
 
-When using the key `pinentry` will be invoked to request the key's passphrase. The passphrase will be cached for up to 10 minutes idle time between uses, to a maximum of 2 hours.
+使用密钥时，将调用`pinentry`来请求密钥的口令。 口令将被缓存 10 分钟的空闲时间（最多 2 小时）。
 
-## Remote Machines (SSH Agent Forwarding)
+## 远程主机（SSH代理转发）
 
-**Note** SSH Agent Forwarding can [add additional risk](https://matrix.org/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident/#ssh-agent-forwarding-should-be-disabled) - proceed with caution!
+**注意** SSH 代理转发可以[增加额外风险](https://matrix.org/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident/# ssh-agent-forwarding-should-be-disabled) - 谨慎操作！
 
-There are two methods for ssh-agent forwarding, one is provided by OpenSSH and the other is provided by GnuPG.
+ssh-agent转发有两种方法，一种是OpenSSH提供的，另一种是GnuPG提供的。
 
-The latter one may be more insecure as raw socket is just forwarded (not like `S.gpg-agent.extra` with only limited functionality; if `ForwardAgent` implemented by OpenSSH is just forwarding the raw socket, then they are insecure to the same degree). But for the latter one, one convenience is that one may forward once and use this agent everywhere in the remote. So again, proceed with caution!
+后一种可能更不安全，因为原始套接字只是转发（不像`S.gpg-agent.extra`那样只有有限的功能； 如果 OpenSSH 实现的`ForwardAgent`只是转发原始套接字，那么它们同样不安全）。 但对于后一种情况，一个方便之处在于，只需转发一次，就可以在远程的任何地方使用该代理。 所以再次强调，谨慎行事！
 
-For example, `tmux` does not have some environment variables like `$SSH_AUTH_SOCK` when you ssh into remote and attach an old `tmux` session. In this case if you use `ForwardAgent`, you need to find the socket manually and `export SSH_AUTH_SOCK=/tmp/ssh-agent-xxx/xxxx.socket` for each shell. But with `S.gpg-agent.ssh` in fixed place, one can just use it as ssh-agent in their shell rc file.
+例如，当您 ssh 到远程并附加旧的`tmux`会话时，`tmux`没有一些环境变量，例如`$SSH_AUTH_SOCK`。 在这种情况下，如果您使用`ForwardAgent`，则需要手动查找套接字并为每个 shell`export SSH_AUTH_SOCK=/tmp/ssh-agent-xxx/xxxx.socket`。 但是，由于`S.gpg-agent.ssh`位于固定位置，因此可以在 shell rc 文件中将其用作 ssh-agent。
 
-### Use ssh-agent 
+### 使用ssh-agent 
 
-In the above steps, you have successfully configured a local ssh-agent.
+通过以上步骤，您已经成功配置了本地 ssh-agent。
 
-You should now be able to use `ssh -A remote` on the _local_ machine to log into _remote_, and should then be able to use YubiKey as if it were connected to the remote machine. For example, using e.g. `ssh-add -l` on that remote machine should show the public key from the YubiKey (note `cardno:`).  (If you don't want to have to remember to use `ssh -A`, you can use `ForwardAgent yes` in `~/.ssh/config`.  As a security best practice, always use `ForwardAgent yes` only for a single `Hostname`, never for all servers.)
+您现在应该能够在_本地_计算机上使用`ssh -A remote`来登录_远程主机_，然后应该能够使用YubiKey，就像它连接到远程计算机一样。 例如，使用例如 该远程计算机上的`ssh-add -l`应显示来自 YubiKey 的公钥（`cardno:`）。 （如果您不想必须记住使用`ssh -A`，则可以在`~/.ssh/config`中使用`ForwardAgent yes`。作为安全最佳实践，始终仅在以下情况下使用`ForwardAgent yes`： 单个`主机名`，绝不适用于所有服务器。）
 
-### Use S.gpg-agent.ssh
+### 使用S.gpg-agent.ssh
 
-First you need to go through [Remote Machines (GPG Agent Forwarding)](#remote-machines-gpg-agent-forwarding), know the conditions for gpg-agent forwarding and know the location of `S.gpg-agent.ssh` on both the local and the remote.
+首先你需要通过[远程主机（GPG代理转发）](#远程主机（GPG代理转发）)，了解gpg-agent转发的条件并知道`S.gpg-agent.ssh`的位置在本地和远程主机上。
 
-You may use the command:
+您可以使用以下命令：
 
-```console
+```bash
 $ gpgconf --list-dirs agent-ssh-socket
 ```
 
-Then in your `.ssh/config` add one sentence for that remote
+然后在你的`.ssh/config`中为该远程主机添加一句话
 
 ```
 Host
@@ -2304,25 +2340,25 @@ Host
   # Note that ForwardAgent is not wanted here!
 ```
 
-After successfully ssh into the remote, you should check that you have `/run/user/1000/gnupg/S.gpg-agent.ssh` lying there.
+成功 ssh 到远程后，您应该检查那里是否有`/run/user/1000/gnupg/S.gpg-agent.ssh`。
 
-Then in the *remote* you can type in command line or configure in the shell rc file with:
+然后在 *远程主机* 中，您可以在命令行中键入或在 shell rc 文件中配置：
 
-```console
+```bash
 export SSH_AUTH_SOCK="/run/user/$UID/gnupg/S.gpg-agent.ssh"
 ```
 
-After typing or sourcing your shell rc file, with `ssh-add -l` you should find your ssh public key now.
+输入或sourcing shell rc 文件后，使用 `ssh-add -l` 您现在应该可以找到您的 ssh 公钥。
 
-**Note** In this process no gpg-agent in the remote is involved, hence `gpg-agent.conf` in the remote is of no use. Also pinentry is invoked locally.
+**注意** 在此过程中，不涉及远程中的 gpg-agent，因此远程中的`gpg-agent.conf`没有用处。 pinentry 也在本地调用。
 
-### Chained SSH Agent Forwarding
+### 链式SSH代理转发
 
-If you use `ssh-agent` provided by OpenSSH and want to forward it into a *third* box, you can just `ssh -A third` on the *remote*.
+如果您使用 OpenSSH 提供的·ssh-agent·并希望将其转发到*第三个主机*，您只需在*远程主机*上使用`ssh -A third`。
 
-Meanwhile, if you use `S.gpg-agent.ssh`, assume you have gone through the steps above and have `S.gpg-agent.ssh` on the *remote*, and you would like to forward this agent into a *third* box, first you may need to configure `sshd_config` and `SSH_AUTH_SOCK` of *third* in the same way as *remote*, then in the ssh config of *remote*, add the following lines
+同时，如果您使用`S.gpg-agent.ssh`，假设您已完成上述步骤并且*远程主机*上有`S.gpg-agent.ssh`，并且您希望将此代理转发到 *第三个主机*，首先您可能需要以与*远程主机*相同的方式配置*第三个主机*的`sshd_config`和`SSH_AUTH_SOCK`，然后在*远程主机*的ssh配置中，添加以下行
 
-```console
+```bash
 Host third
   Hostname third-host.tld
   StreamLocalBindUnlink yes
@@ -2331,43 +2367,43 @@ Host third
   # Note that ForwardAgent is not wanted here!
 ```
 
-You should change the path according to `gpgconf --list-dirs agent-ssh-socket` on *remote* and *third*.
+您应该根据 *远程主机* 和 *第三个主机* 上的 `gpgconf --list-dirs agent-ssh-socket` 更改路径。
 
 ## GitHub
 
-You can use YubiKey to sign GitHub commits and tags. It can also be used for GitHub SSH authentication, allowing you to push, pull, and commit without a password.
+您可以使用 YubiKey 对 GitHub 的留言和tag进行签名。 它还可用于 GitHub SSH 身份验证，允许您无需口令即可推送、拉取和提交。
 
-Login to GitHub and upload SSH and PGP public keys in Settings.
+登录 GitHub 并在“设置”中上传 SSH 和 PGP 公钥。
 
-To configure a signing key:
+配置签名密钥：
 
-	> git config --global user.signingkey $KEYID
+> git config --global user.signingkey $KEYID
 
-Make sure the user.email option matches the email address associated with the PGP identity.
+确保 user.email 选项与与 PGP 身份关联的电子邮件地址匹配。
 
-Now, to sign commits or tags simply use the `-S` option. GPG will automatically query YubiKey and prompt you for a PIN.
+现在，要签署提交或标签，只需使用`-S`选项即可。 GPG 将自动查询 YubiKey 并提示您输入 PIN。
 
-To authenticate:
+进行身份验证：
 
 **Windows**
 
-Run the following commands:
+运行以下命令：
 
-```console
+```bash
 git config --global core.sshcommand "plink -agent"
 
 git config --global gpg.program 'C:\Program Files (x86)\GnuPG\bin\gpg.exe'
 ```
 
-You can then change the repository URL to `git@github.com:USERNAME/repository` and any authenticated commands will be authorized by YubiKey.
+然后，您可以将存储库 URL 更改为 `git@github.com:USERNAME/repository`，任何经过身份验证的命令都将由 YubiKey 授权。
 
-**Note** If you encounter the error `gpg: signing failed: No secret key` - run `gpg --card-status` with YubiKey plugged in and try the git command again.
+**注意** 如果您遇到错误`gpg: signing failed: No secret key` - 在插入 YubiKey 的情况下运行`gpg --card-status`，然后再次尝试 git 命令。
 
 ## OpenBSD
 
-Install and enable tools for use with PC/SC drivers, cards, readers, then reboot to recognize YubiKey:
+安装并启用与 PC/SC 驱动程序、卡、读卡器一起使用的工具，然后重新启动以识别 YubiKey：
 
-```console
+```bash
 $ doas pkg_add pcsc-tools
 
 $ doas rcctl enable pcscd
@@ -2377,113 +2413,113 @@ $ doas reboot
 
 ## Windows
 
-Windows can already have some virtual smartcard readers installed, like the one provided for Windows Hello. To ensure your YubiKey is the correct one used by scdaemon, you should add it to its configuration. You will need your device's full name. To find your device's full name, plug in your YubiKey and open PowerShell to run the following command:
+Windows 已经安装了一些虚拟智能卡读卡器，例如为 Windows Hello 提供的读卡器。 为了确保 scdaemon 使用的 YubiKey 是正确的，您应该将其添加到其配置中。 您将需要设备的全名。 要查找设备的全名，请插入 YubiKey 并打开 PowerShell 以运行以下命令：
 
 ``` powershell
 PS C:\WINDOWS\system32> Get-PnpDevice -Class SoftwareDevice | Where-Object {$_.FriendlyName -like "*YubiKey*"} | Select-Object -ExpandProperty FriendlyName
 Yubico YubiKey OTP+FIDO+CCID 0
 ```
 
-The name slightly differs according to the model. Thanks to [Scott Hanselman](https://www.hanselman.com/blog/HowToSetupSignedGitCommitsWithAYubiKeyNEOAndGPGAndKeybaseOnWindows.aspx) for sharing this information.
+根据型号的不同，名称略有不同。 感谢 [Scott Hanselman](https://www.hanselman.com/blog/HowToSetupSignedGitCommitsWithAYubiKeyNEOAndGPGAndKeybaseOnWindows.aspx) 分享此信息。
 
-* Create or edit `%APPDATA%/gnupg/scdaemon.conf` to add:
+* 创建或编辑 `%APPDATA%/gnupg/scdaemon.conf` 以添加：
 
 ```
 reader-port <your yubikey device's full name, e.g. Yubico YubiKey OTP+FIDO+CCID 0>
 ```
 
-* Create or edit `%APPDATA%/gnupg/gpg-agent.conf` to add:
+* 创建或编辑 `%APPDATA%/gnupg/gpg-agent.conf` 以添加：
 
 ```
 enable-ssh-support
 enable-putty-support
 ```
 
-* Open a command console, restart the agent:
+* 打开命令控制台，重新启动代理：
 
 ```
 > gpg-connect-agent killagent /bye
 > gpg-connect-agent /bye
 ```
 
-* Enter `> gpg --card-status` to see YubiKey details.
-* Import the [public key](#export-public-key): `> gpg --import <path to public key file>`
-* [Trust the master key](#trust-master-key)
-* Retrieve the public key id: `> gpg --list-public-keys`
-* Export the SSH key from GPG: `> gpg --export-ssh-key <public key id>`
+* 输入 `> gpg --card-status` 查看 YubiKey 详细信息。
+* 导入 [公钥](#导出公钥): `> gpg --import <公钥文件的路径>`
+* 信任主密钥]
+* 检索公钥 id：`> gpg --list-public-keys`
+* 从 GPG 导出 SSH 密钥：`> gpg --export-ssh-key <公钥 id>`
 
-Copy this key to a file for later use. It represents the public SSH key corresponding to the secret key on the YubiKey. You can upload this key to any server you wish to SSH into.
+将此密钥复制到文件中以供以后使用。 它代表与 YubiKey 上的秘密密钥对应的公共 SSH 密钥。 您可以将此密钥上传到您希望通过 SSH 访问的任何服务器。
 
-Create a shortcut that points to `gpg-connect-agent /bye` and place it in the startup folder `shell:startup` to make sure the agent starts after a system shutdown. Modify the shortcut properties so it starts in a "Minimized" window, to avoid unnecessary noise at startup.
+创建一个指向`gpg-connect-agent /bye`的快捷方式，并将其放置在启动文件夹`shell:startup`中，以确保代理在系统关闭后启动。 修改快捷方式属性，使其在“最小化”窗口中启动，以避免启动时不必要的噪音。
 
-Now you can use PuTTY for public key SSH authentication. When the server asks for public key verification, PuTTY will forward the request to GPG, which will prompt you for a PIN and authorize the login using YubiKey.
+现在您可以使用 PuTTY 进行公钥 SSH 身份验证。 当服务器请求公钥验证时，PuTTY 会将请求转发给 GPG，GPG 将提示您输入 PIN 并授权使用 YubiKey 登录。
 
 ### WSL
 
-The goal here is to make the SSH client inside WSL work together with the Windows agent you are using (gpg-agent.exe in our case). Here is what we are going to achieve:
-![WSL agent architecture](media/schema_gpg.png)
+这里的目标是使 WSL 内的 SSH 客户端与您正在使用的 Windows 代理（在我们的例子中为 gpg-agent.exe）一起工作。 这是我们要实现的目标：
+![WSL agent architecture](https://github.com/drduh/YubiKey-Guide/raw/master/media/schema_gpg.png)
 
-**Note** this works only for SSH agent forwarding. Real GPG forwarding (encryption/decryption) is actually not supported. See [weasel-pageant](https://github.com/vuori/weasel-pageant) for further information or consider using [wsl2-ssh-pageant](https://github.com/BlackReloaded/wsl2-ssh-pageant) which supports both SSH and GPG agent forwarding.
+**注意** 这仅适用于 SSH 代理转发。 实际上不支持真正的GPG转发（加密/解密）。 请参阅 [weasel-pageant](https://github.com/vuori/weasel-pageant) 了解更多信息或考虑使用 [wsl2-ssh-pageant](https://github.com/BlackReloaded/wsl2-ssh-pageant) ），支持 SSH 和 GPG 代理转发。
 
-#### Use ssh-agent or use S.weasel-pegant
+#### 使用ssh-agent还是S.weasel-pegant
 
-One way to forward is just `ssh -A` (still need to eval weasel to setup local ssh-agent), and only relies on OpenSSH. In this track, `ForwardAgent` and `AllowAgentForwarding` in ssh/sshd config may be involved; However, if you use the other way (gpg ssh socket forwarding), you should not enable `ForwardAgent` in ssh config. See [SSH Agent Forwarding](#remote-machines-ssh-agent-forwarding) for more info.
+一种转发方式是 `ssh -A` （仍然需要 eval weasel 来设置本地 ssh-agent），并且仅依赖于 OpenSSH。 在这个赛道中，可能会涉及到 ssh/sshd 配置中的 `ForwardAgent` 和 `AllowAgentForwarding`； 但是，如果您使用其他方式（gpg ssh 套接字转发），则不应在 ssh 配置中启用 `ForwardAgent`。 有关详细信息，请参阅 [SSH代理转发](#SSH代理转发)。
 
-Another way is to forward the gpg ssh socket, as described below.
+另一种方法是转发 gpg ssh 套接字，如下所述。
 
-#### Prerequisites
+#### 先决条件
 
-* Ubuntu 16.04 or newer for WSL
+* 适用于 WSL 的 Ubuntu 16.04 或更高版本
 * Kleopatra
 * [Windows configuration](#windows)
 
-#### WSL configuration
+#### WSL配置
 
-Download or clone [weasel-pageant](https://github.com/vuori/weasel-pageant).
+下载或克隆 [weasel-pageant](https://github.com/vuori/weasel-pageant)。
 
-Add `eval $(/mnt/c/<path of extraction>/weasel-pageant -r -a /tmp/S.weasel-pageant)` to shell rc file. Use a named socket here so it can be used in the `RemoteForward` directive of `~/.ssh/config`. Source it with `source ~/.bashrc`.
+将 `eval $(/mnt/c/<提取路径>/weasel-pageant -r -a /tmp/S.weasel-pageant)` 添加到 shell rc 文件中。 此处使用命名套接字，以便可以在`~/.ssh/config”的“RemoteForward`指令中使用它。 使用`source ~/.bashrc`获取它。
 
-Display the SSH key with `$ ssh-add -l`
+使用`$ ssh-add -l`显示 SSH 密钥
 
-Edit `~/.ssh/config` to add the following for each host you want to use agent forwarding:
+编辑 `~/.ssh/config` 为要使用代理转发的每个主机添加以下内容：
 
 ```
 RemoteForward <remote SSH socket path> /tmp/S.weasel-pageant
 ```
 
-**Note** The remote SSH socket path can be found with `gpgconf --list-dirs agent-ssh-socket`
+**注意** 远程 SSH 套接字路径可以通过 `gpgconf --list-dirs agent-ssh-socket` 找到
 
-#### Remote host configuration
+#### 远程主机配置
 
-You may have to add the following to the shell rc file. 
+您可能需要将以下内容添加到 shell rc 文件中。
 
 ```
 export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
 ```
 
-Add the following to `/etc/ssh/sshd_config`:
+将以下内容添加到 `/etc/ssh/sshd_config` 中：
 
 ```
 StreamLocalBindUnlink yes
 ```
 
-And reload the SSH daemon (e.g., `sudo service sshd reload`).
+并重新加载 SSH 守护进程（例如`sudo service sshd reload`）。
 
-Unplug YubiKey, disconnect or reboot. Log back into Windows, open a WSL console and enter `ssh-add -l` - you should see nothing.
+拔下 YubiKey、断开连接或重新启动。 重新登录 Windows，打开 WSL 控制台并输入 `ssh-add -l` - 您应该看不到任何内容。
 
-Plug in YubiKey, enter the same command to display the ssh key.
+插入 YubiKey，输入相同的命令以显示 ssh 密钥。
 
-Log into the remote host, you should have the pinentry dialog asking for the YubiKey pin.
+登录远程主机，您应该会出现 pinentry 对话框，要求输入 YubiKey pin。
 
-On the remote host, type `ssh-add -l` - if you see the ssh key, that means forwarding works!
+在远程主机上，输入`ssh-add -l` - 如果您看到 ssh 密钥，则意味着转发有效！
 
-**Note** Agent forwarding may be chained through multiple hosts - just follow the same [protocol](#remote-host-configuration) to configure each host. You may also read this part on [chained ssh agent forwarding](#chained-ssh-agent-forwarding).
+**注意** 代理转发可以通过多个主机链接 - 只需遵循相同的[协议](#远程主机配置) 来配置每个主机。 您还可以在[链式SSH代理转发](#链式SSH代理转发) 上阅读这部分内容。
 
 ## macOS
 
-To use gui applications on macOS, [a little bit more setup is needed](https://jms1.net/yubikey/make-ssh-use-gpg-agent.md).
+要在 macOS 上使用 gui 应用程序，[需要进行更多设置](https://jms1.net/yubikey/make-ssh-use-gpg-agent.md)。
 
-Create `$HOME/Library/LaunchAgents/gnupg.gpg-agent.plist` with the following contents:
+使用以下内容创建`$HOME/Library/LaunchAgents/gnupg.gpg-agent.plist`：
 
 ```
 <?xml version="1.0" encoding="UTF-8"?>
@@ -2506,11 +2542,11 @@ Create `$HOME/Library/LaunchAgents/gnupg.gpg-agent.plist` with the following con
 </plist>
 ```
 
-```console
+```bash
 launchctl load $HOME/Library/LaunchAgents/gnupg.gpg-agent.plist
 ```
 
-Create `$HOME/Library/LaunchAgents/gnupg.gpg-agent-symlink.plist` with the following contens:
+创建包含以下内容的`$HOME/Library/LaunchAgents/gnupg.gpg-agent-symlink.plist`：
 
 ```
 <?xml version="1.0" encoding="UTF-8"?>
@@ -2531,57 +2567,57 @@ Create `$HOME/Library/LaunchAgents/gnupg.gpg-agent-symlink.plist` with the follo
 </plist>
 ```
 
-```console
+```bash
 launchctl load $HOME/Library/LaunchAgents/gnupg.gpg-agent-symlink.plist
 ```
 
-You will need to either reboot, or log out and log back in, in order to activate these changes.
+您需要重新启动或注销并重新登录才能激活这些更改。
 
-# Remote Machines (GPG Agent Forwarding)
+# 远程主机（GPG代理转发）
 
-This section is different from ssh-agent forwarding in [SSH](#ssh) as gpg-agent forwarding has a broader usage, not only limited to ssh.
+本节与[SSH](#ssh)中的ssh-agent转发不同，因为gpg-agent转发具有更广泛的用途，不仅限于ssh。
 
-To use YubiKey to sign a git commit on a remote host, or signing email/decrypt files on a remote host, configure and use GPG Agent Forwarding. To ssh through another network, especially to push to/pull from GitHub using ssh, see [Remote Machines (SSH Agent forwarding)](#remote-machines-ssh-agent-forwarding) for more info.
+要使用 YubiKey 在远程主机上签署 git 提交，或在远程主机上签署电子邮件/解密文件，请配置和使用 GPG 代理转发。 要通过另一个网络进行 ssh，尤其是使用 ssh 向 GitHub 推送/从 GitHub 拉取，请参阅[远程主机（SSH 代理转发）](#远程主机（SSH 代理转发）) 了解更多信息。
 
-To do this, you need access to the remote machine and the YubiKey has to be set up on the host machine.
+为此，您需要访问远程计算机，并且必须在主机上设置 YubiKey。
 
-After gpg-agent forwarding, it is nearly the same as if YubiKey was inserted in the remote. Hence configurations except `gpg-agent.conf` for the remote can be the same as those for the local.
+gpg-agent 转发后，几乎与将 YubiKey 插入远程相同。 因此，除了`gpg-agent.conf`之外，远程的配置可以与本地的配置相同。
 
-**Important** `gpg-agent.conf` for the remote is of no use, hence `$GPG_TTY` is of no use too for the remote. The mechanism is that after forwarding, remote `gpg` directly communicates with `S.gpg-agent` without *starting* `gpg-agent` on the remote.
+**重要** `gpg-agent.conf` 对于远程来说是没有用的，因此 `$GPG_TTY` 对于远程来说也是没有用的。 其机制是，转发后，远程`gpg`直接与`S.gpg-agent`通信，而无需在远程*启动*`gpg-agent`。
 
-On the remote machine, edit `/etc/ssh/sshd_config` to set `StreamLocalBindUnlink yes`
+在远程计算机上，编辑“/etc/ssh/sshd_config”以设置`StreamLocalBindUnlink yes`
 
-**Optional** If you do not have root access to the remote machine to edit `/etc/ssh/sshd_config`, you will need to remove the socket (located at `gpgconf --list-dir agent-socket`) on the remote machine before forwarding works. For example, `rm /run/user/1000/gnupg/S.gpg-agent`. Further information can be found on the [AgentForwarding GNUPG wiki page](https://wiki.gnupg.org/AgentForwarding).
+**可选** 如果您没有远程计算机的根访问权限来编辑`/etc/ssh/sshd_config`，则需要删除套接字（位于`gpgconf --list-dir agent-socket`） 转发工作之前的远程计算机。 例如，`rm /run/user/1000/gnupg/S.gpg-agent`。 更多信息可以在 [AgentForwarding GNUPG wiki 页面](https://wiki.gnupg.org/AgentForwarding) 上找到。
 
-Import public keys to the remote machine. This can be done by fetching from a keyserver. On the local machine, copy the public keyring to the remote machine:
+将公钥导入到远程计算机。 这可以通过从密钥服务器获取来完成。 在本地计算机上，将公钥复制到远程计算机：
 
-```console
+```bash
 $ scp ~/.gnupg/pubring.kbx remote:~/.gnupg/
 ```
 
-On modern distributions, such as Fedora 30, there is typically no need to also set `RemoteForward` in `~/.ssh/config` as detailed in the next chapter, because the right thing happens automatically.
+在现代发行版上，例如 Fedora 30，通常不需要在`~/.ssh/config`中设置`RemoteForward`，如下一章所述，因为正确的事情会自动发生。
 
-If any error happens (or there is no `gpg-agent.socket` in the remote) for modern distributions, you may go through the configuration steps in the next section.
+如果现代发行版发生任何错误（或者远程中没有`gpg-agent.socket`），您可以执行下一节中的配置步骤。
 
-## Steps for older distributions
+## 旧发行版的步骤
 
-On the local machine, run:
+在本地计算机上运行：
 
-```console
+```bash
 $ gpgconf --list-dirs agent-extra-socket
 ```
 
-This should return a path to agent-extra-socket - `/run/user/1000/gnupg/S.gpg-agent.extra` - though on older Linux distros (and macOS) it may be `/home/<user>/.gnupg/S/gpg-agent.extra`
+这应该返回代理额外套接字的路径 - `/run/user/1000/gnupg/S.gpg-agent.extra` - 尽管在较旧的 Linux 发行版（和 macOS）上它可能是 `/home/<user> /.gnupg/S/gpg-agent.extra`
 
-Find the agent socket on the **remote** machine:
+在**远程**机器上找到代理套接字：
 
-```console
+```bash
 $ gpgconf --list-dirs agent-socket
 ```
 
-This should return a path such as `/run/user/1000/gnupg/S.gpg-agent`
+这应该返回一个路径，例如`/run/user/1000/gnupg/S.gpg-agent`
 
-Finally, enable agent forwarding for a given machine by adding the following to the local machine's ssh config file `~/.ssh/config` (your agent sockets may be different):
+最后，通过将以下内容添加到本地计算机的 ssh 配置文件`~/.ssh/config`（您的代理套接字可能不同）来启用给定计算机的代理转发：
 
 ```
 Host
@@ -2591,24 +2627,24 @@ Host
   # RemoteForward [remote socket] [local socket]
 ```
 
-If you're still having problems, it may be necessary to edit `gpg-agent.conf` file on the *local* machines to add the following information:
+如果您仍然遇到问题，可能需要编辑 *本地* 计算机上的 `gpg-agent.conf` 文件以添加以下信息：
 
 ```
 pinentry-program /usr/bin/pinentry-gtk-2
 extra-socket /run/user/1000/gnupg/S.gpg-agent.extra
 ```
 
-**Note** The pinentry program starts on *local* machine, not remote. Hence when there are needs to enter the pin you need to find the prompt on the local machine.
+**注意** pinentry 程序在*本地*计算机上启动，而不是远程。 因此，当需要输入PIN码时，您需要在本地机器上找到提示。
 
-**Important** Any pinentry program except `pinentry-tty` or `pinentry-curses` may be used. This is because local `gpg-agent` may start headlessly (By systemd without `$GPG_TTY` set locally telling which tty it is on), thus failed to obtain the pin. Errors on the remote may be misleading saying that there is *IO Error*. (Yes, internally there is actually an *IO Error* since it happens when writing to/reading from tty while finding no tty to use, but for end users this is not friendly.)
+**重要** 可以使用除`pinentry-tty`或`pinentry-curses`之外的任何 pinentry 程序。 这是因为本地 `gpg-agent` 可能会无头启动（通过 systemd 没有在本地设置 `$GPG_TTY` 来告诉它所在的 tty），从而无法获取 pin。 远程主机上的错误可能会产生误导，称存在*IO 错误*。 （是的，内部实际上存在一个*IO错误*，因为它发生在写入/读取tty而没有找到可使用的tty时，但对于最终用户来说这并不友好。）
 
-See [Issue #85](https://github.com/drduh/YubiKey-Guide/issues/85) for more information and troubleshooting.
+有关更多信息和故障排除，请参阅[问题 #85](https://github.com/drduh/YubiKey-Guide/issues/85)。
 
-## Chained GPG Agent Forwarding
+## 链式 GPG 代理转发
 
-Assume you have gone through the steps above and have `S.gpg-agent` on the *remote*, and you would like to forward this agent into a *third* box, first you may need to configure `sshd_config` of *third* in the same way as *remote*, then in the ssh config of *remote*, add the following lines:
+假设您已完成上述步骤，并且*远程主机*上有`S.gpg-agent`，并且您想将此代理转发到*第三个*主机，首先您可能需要配置*第三个主机*的`sshd_config`  与*远程主机* 的方式相同，然后在*远程主机* 的ssh 配置中添加以下行：
 
-```console
+```bash
 Host third
   Hostname third-host.tld
   StreamLocalBindUnlink yes
@@ -2616,21 +2652,21 @@ Host third
   # RemoteForward [remote socket] [local socket]
 ```
 
-You should change the path according to `gpgconf --list-dirs agent-socket` on *remote* and *third*.
+您应该根据 *远程主机* 和 *第三个主机* 上的 `gpgconf --list-dirs agent-socket` 更改路径。
 
-**Note** On *local* you have `S.gpg-agent.extra` whereas on *remote* and *third*, you only have `S.gpg-agent`.
+**注意** 在 *本地主机* 上，您有 `S.gpg-agent.extra`，而在 *远程主机* 和 *第三个主机* 上，您只有 `S.gpg-agent`。
 
-# Using Multiple Keys
+# 使用多个密钥
 
-To use a single identity with multiple YubiKeys - or to replace a lost card with another - issue this command to switch keys:
+要使用具有多个 YubiKey 的单一身份 - 或用另一张卡替换丢失的卡 - 发出以下命令来切换密钥：
 
-```console
+```bash
 $ gpg-connect-agent "scd serialno" "learn --force" /bye
 ```
 
-Alternatively, use a script to delete the GnuPG shadowed key, where the card serial number is stored (see [GnuPG #T2291](https://dev.gnupg.org/T2291)):
+或者，使用脚本删除存储卡序列号的 GnuPG 隐藏密钥（请参阅 [GnuPG #T2291](https://dev.gnupg.org/T2291)）：
 
-```console
+```bash
 $ cat >> ~/scripts/remove-keygrips.sh <<EOF
 #!/usr/bin/env bash
 (( $# )) || { echo "Specify a key." >&2; exit 1; }
@@ -2648,37 +2684,37 @@ $ chmod +x ~/scripts/remove-keygrips.sh
 $ ~/scripts/remove-keygrips.sh $KEYID
 ```
 
-See discussion in Issues [#19](https://github.com/drduh/YubiKey-Guide/issues/19) and [#112](https://github.com/drduh/YubiKey-Guide/issues/112) for more information and troubleshooting steps.
+请参阅问题 [#19](https://github.com/drduh/YubiKey-Guide/issues/19) 和 [#112](https://github.com/drduh/YubiKey-Guide/issues/112) 中的讨论了解更多信息和故障排除步骤。
 
-# Require touch
+# 需要触摸
 
-**Note** This is not possible on YubiKey NEO.
+**注意** 这在 YubiKey NEO 上是不可能的。
 
-By default, YubiKey will perform encryption, signing and authentication operations without requiring any action from the user, after the key is plugged in and first unlocked with the PIN.
+默认情况下，插入密钥并首次使用 PIN 解锁后，YubiKey 将执行加密、签名和身份验证操作，无需用户执行任何操作。
 
-To require a touch for each key operation, install [YubiKey Manager](https://developers.yubico.com/yubikey-manager/) and recall the Admin PIN:
+如需每次按键操作都需要触摸，请安装 [YubiKey Manager](https://developers.yubico.com/yubikey-manager/) 并调用Admin PIN：
 
-**Note** Older versions of YubiKey Manager use `touch` instead of `set-touch` in the following commands.
+**注意** 旧版本的 YubiKey Manager 在以下命令中使用`touch`而不是`set-touch`。
 
-Authentication:
+身份验证：
 
-```console
+```bash
 $ ykman openpgp keys set-touch aut on
 ```
 
-Signing:
+签名：
 
-```console
+```bash
 $ ykman openpgp keys set-touch sig on
 ```
 
-Encryption:
+加密：
 
-```console
+```bash
 $ ykman openpgp keys set-touch enc on
 ```
 
-Depending on how the YubiKey is going to be used, you may want to look at the policy options for each of these and adjust the above commands accordingly. They can be viewed with the following command:
+根据 YubiKey 的使用方式，您可能需要查看每个选项的策略选项并相应地调整上述命令。 可以使用以下命令查看它们：
 
 ```
 $ ykman openpgp keys set-touch -h
@@ -2708,27 +2744,27 @@ Options:
   -h, --help            Show this message and exit.
 ```
 
-If the YubiKey is going to be used within an email client that opens and verifies encrypted mail, `Cached` or `Cached-Fixed` may be desirable.
+如果要在打开和验证加密邮件的电子邮件客户端中使用 YubiKey，则可能需要`Cached`或`Cached-Fixed`。
 
-YubiKey will blink when it is waiting for a touch. On Linux you can also use [yubikey-touch-detector](https://github.com/maximbaz/yubikey-touch-detector) to have an indicator or notification that YubiKey is waiting for a touch.
+YubiKey 在等待触摸时会闪烁。 在 Linux 上，您还可以使用 [yubikey-touch- detector](https://github.com/maximbaz/yubikey-touch- detector) 来显示 YubiKey 正在等待触摸的指示器或通知。
 
 # Email
 
-GPG keys on YubiKey can be used with ease to encrypt and/or sign emails and attachments using [Thunderbird](https://www.thunderbird.net/), [Enigmail](https://www.enigmail.net) and [Mutt](http://www.mutt.org/). Thunderbird supports OAuth 2 authentication and can be used with Gmail. See [this guide](https://ssd.eff.org/en/module/how-use-pgp-linux) from EFF for detailed instructions. Mutt has OAuth 2 support since version 2.0.
+YubiKey 上的 GPG 密钥可轻松使用 [Thunderbird](https://www.thunderbird.net/)、[Enigmail](https://www.enigmail.net) 和 [Mutt](http://www.mutt.org/)。 Thunderbird 支持 OAuth 2 身份验证，可以与 Gmail 一起使用。 有关详细说明，请参阅 EFF 的[指南](https://ssd.eff.org/en/module/how-use-pgp-linux)。 Mutt 从 2.0 版开始就支持 OAuth 2。
 
 ## Mailvelope
 
-[Mailvelope](https://www.mailvelope.com/en) allows GPG keys on YubiKey to be used with Gmail and others.
+[Mailvelope](https://www.mailvelope.com/en) 允许 YubiKey 上的 GPG 密钥与 Gmail 等一起使用。
 
-**Important** Mailvelope [does not work](https://github.com/drduh/YubiKey-Guide/issues/178) with the `throw-keyids` option set in `gpg.conf`.
+**重要** 如果在 `gpg.conf` 中设置了 `throw-keyids` 选项,则Mailvelope [不起作用](https://github.com/drduh/YubiKey-Guide/issues/178)。
 
-On macOS, install gpgme using Homebrew:
+在 macOS 上，使用 Homebrew 安装 gpgme：
 
-```console
+```bash
 $ brew install gpgme
 ```
 
-To allow Chrome to run gpgme, edit `~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/gpgmejson.json` and add:
+要允许 Chrome 运行 gpgme，请编辑 `~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/gpgmejson.json` 并添加：
 
 ```json
 {
@@ -2742,29 +2778,29 @@ To allow Chrome to run gpgme, edit `~/Library/Application\ Support/Google/Chrome
 }
 ```
 
-Edit the default path to allow Chrome to find GPG:
+编辑默认路径以允许 Chrome 查找 GPG：
 
-```console
+```bash
 $ sudo launchctl config user path /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 ```
 
-Finally, install the [Mailvelope extension](https://chrome.google.com/webstore/detail/mailvelope/kajibbejlbohfaggdiogboambcijhkke) from the Chrome app store.
+最后，从 Chrome 应用商店安装 [Mailvelope 扩展](https://chrome.google.com/webstore/detail/mailvelope/kajibbejlbohfaggdiogboambcijhkke)。
 
 ## Mutt
 
-Mutt has both CLI and TUI interfaces, and the latter provides powerful functions for daily email processing. In addition, PGP can be integrated such that signing/encryption/verifying/decryption can be done without leaving TUI.
+Mutt同时具有CLI和TUI界面，后者为日常电子邮件处理提供了强大的功能。 此外，还可以集成PGP，这样签名/加密/验证/解密就可以在不离开TUI的情况下完成。
 
-To enable GnuPG support, one can just use the config file `gpg.rc` provided by mutt, usually located at `/usr/share/doc/mutt/samples/gpg.rc` after installation. One only needs to edit the file on options like `pgp_default_key`, `pgp_sign_as` and `pgp_autosign`. After editting one can `source` this rcfile in their main `muttrc` to use it.
+要启用 GnuPG 支持，只需使用 mutt 提供的配置文件`gpg.rc`即可，安装后通常位于`/usr/share/doc/mutt/samples/gpg.rc`。 只需要编辑`pgp_default_key`、`pgp_sign_as`和`pgp_autosign`等选项即可。 编辑后，`source`此 `rcfile`即可以在其主`muttrc`中来使用它。
 
-**Important** If one uses `pinentry-tty` as one's pinentry program in `gpg-agent.conf`, it would mess with one's Mutt TUI, as reported. This is because Mutt TUI uses curses while tty output may harm the format. It is recommended to use `pinentry-curses` or other graphic pinentry program.
+**重要** 据报道，如果一个人在`gpg-agent.conf`中使用`pinentry-tty`作为自己的 pinentry 程序，它会弄乱一个人的 Mutt TUI。 这是因为 Mutt TUI 使用诅咒，而 tty 输出可能会损害格式。 推荐使用`pinentry-curses`或其他图形pinentry程序。
 
-# Reset
+# 重置
 
-If PIN attempts are exceeded, the card is locked and must be [reset](https://developers.yubico.com/ykneo-openpgp/ResetApplet.html) and set up again using the encrypted backup.
+如果超过 PIN 尝试次数，卡将被锁定，并且必须[重置](https://developers.yubico.com/ykneo-openpgp/ResetApplet.html)并使用加密备份重新设置。
 
-Copy the following script to a file and run `gpg-connect-agent -r $file` to lock and terminate the card. Then re-insert YubiKey to reset.
+将以下脚本复制到文件并运行`gpg-connect-agent -r $file`以锁定并终止卡。 然后重新插入YubiKey进行重置。
 
-```console
+```bash
 /hex
 scd serialno
 scd apdu 00 20 00 81 08 40 40 40 40 40 40 40 40
@@ -2780,9 +2816,9 @@ scd apdu 00 44 00 00
 /echo Card has been successfully reset.
 ```
 
-Or use `ykman` (sometimes in `~/.local/bin/`):
+或者使用 `ykman` （有时在 `~/.local/bin/` 中）：
 
-```console
+```bash
 $ ykman openpgp reset
 WARNING! This will delete all stored OpenPGP keys and data and restore factory settings? [y/N]: y
 Resetting OpenPGP data, don't remove your YubiKey...
@@ -2792,89 +2828,89 @@ Reset code:  NOT SET
 Admin PIN:   12345678
 ```
 
-## Recovery after reset
+## 重置后恢复
 
-If for whatever reason you need to reinstate your YubiKey from your master key backup (such as the one stored on an encrypted USB described in [Backup](#backup)), follow the following steps in [Rotating keys](#rotating-keys) to setup your environment, and then follow the steps of again [Configure Smartcard](#configure-smartcard).
+如果出于某种原因您需要从主密钥备份（例如[备份](#备份)中描述的存储在加密 USB 上的备份）恢复 YubiKey，请按照[轮替密钥](#轮替密钥)中的以下步骤操作 ）设置您的环境，然后再次按照[配置智能卡](#配置智能卡)的步骤操作。
 
-Before you unmount your backup, ask yourself if you should make another one just in case.
+在卸载备份之前，问问自己是否应该再制作一个以防万一。
 
-# Notes
+# 注释
 
-1. YubiKey has two configurations: one invoked with a short press, and the other with a long press. By default, the short-press mode is configured for HID OTP - a brief touch will emit an OTP string starting with `cccccccc`. If you rarely use the OTP mode, you can swap it to the second configuration via the YubiKey Personalization tool. If you *never* use OTP, you can disable it entirely using the [YubiKey Manager](https://developers.yubico.com/yubikey-manager) application (note, this not the similarly named older YubiKey NEO Manager). The command to disable OTP with ykman is `ykman config usb -d OTP`.
-1. Programming YubiKey for GPG keys still lets you use its other configurations - [U2F](https://en.wikipedia.org/wiki/Universal_2nd_Factor), [OTP](https://www.yubico.com/faq/what-is-a-one-time-password-otp/) and [static password](https://www.yubico.com/products/services-software/personalization-tools/static-password/) modes, for example.
-1. Setting an expiry essentially forces you to manage your subkeys and announces to the rest of the world that you are doing so. Setting an expiry on a primary key is ineffective for protecting the key from loss - whoever has the primary key can simply extend its expiry period. Revocation certificates are [better suited](https://security.stackexchange.com/questions/14718/does-openpgp-key-expiration-add-to-security/79386#79386) for this purpose. It may be appropriate for your use case to set expiry dates on subkeys.
-1. To switch between two or more identities on different keys - unplug the first key and restart gpg-agent, ssh-agent and pinentry with `pkill gpg-agent ; pkill ssh-agent ; pkill pinentry ; eval $(gpg-agent --daemon --enable-ssh-support)`, then plug in the other key and run `gpg-connect-agent updatestartuptty /bye` - then it should be ready for use.
-1. To use yubikeys on more than one computer with gpg: After the initial setup, import the public keys on the second workstation. Confirm gpg can see the card via `gpg --card-status`, Trust the public keys you imported ultimately (as above). At this point `gpg --list-secret-keys` should show your (trusted) key.
+1. YubiKey 有两种配置：一种是短按调用，另一种是长按调用。 默认情况下，短按模式配置为 HID OTP - 短暂触摸将发出以`cccccccc`开头的 OTP 字符串。 如果您很少使用 OTP 模式，可以通过 YubiKey 个性化工具将其切换到第二种配置。 如果您“从不”使用 OTP，则可以使用 [YubiKey Manager](https://developers.yubico.com/yubikey-manager) 应用程序完全禁用它（注意，这不是类似名称的旧版 YubiKey NEO Manager）。 使用 ykman 禁用 OTP 的命令是`ykman config usb -d OTP`。
+1. 已进行过 GPG 密钥编程的 YubiKey 仍然允许您使用其其他配置 - [U2F](https://en.wikipedia.org/wiki/Universal_2nd_Factor)、[OTP](https://www.yubico.com/faq/what-is-a-one-time-password-otp/)和[静态密码](https://www.yubico.com/products/services-software/personalization-tools/static-password/)模式。
+1. 设置过期实际上会强制您管理您的子密钥并向世界其他地方宣布您正在这样做。 在主密钥上设置过期时间对于防止密钥丢失是无效的 - 拥有主键的人可以简单地延长其过期时间。 吊销证书[更适合](https://security.stackexchange.com/questions/14718/does-openpgp-key-expiration-add-to-security/79386#79386)用于此目的。 设置子密钥的到期日期可能适合您的用例。
+1. 要在不同密钥上的两个或多个身份之间切换 - 拔下第一个密钥并使用 `pkill gpg-agent ; pkill ssh-agent ; pkill pinentry ; eval $(gpg-agent --daemon --enable-ssh-support)`，然后插入另一个密钥并运行 `gpg-connect-agent updatestartuptty /bye` - 然后它应该可以使用了。
+1. 要在多台带有 gpg 的计算机上使用 yubikeys： 初始设置后，在第二个工作站上导入公钥。 确认 gpg 可以通过 `gpg --card-status` 看到该卡，信任您最终导入的公钥（如上所述）。 此时`gpg --list-secret-keys`应该显示您的（可信）密钥。
 
-# Troubleshooting
+# 疑难解答
 
-- Use `man gpg` to understand GPG options and command-line flags.
+- 使用`man gpg`来了解 GPG 选项和命令行参数。
 
-- To get more information on potential errors, restart the `gpg-agent` process with debug output to the console with `pkill gpg-agent; gpg-agent --daemon --no-detach -v -v --debug-level advanced --homedir ~/.gnupg`.
+- 要获取有关潜在错误的更多信息，请重新启动`gpg-agent`进程，并使用 `pkill gpg-agent; gpg-agent --daemon --no-detach -v -v --debug-level advanced --homedir ~/.gnupg`将debug信息输出到控制台。
 
-- If you encounter problems connecting to YubiKey with GPG - try unplugging and re-inserting YubiKey, and restarting the `gpg-agent` process.
+- 如果您在使用 GPG 连接到 YubiKey 时遇到问题 - 尝试拔下并重新插入 YubiKey，然后重新启动 `gpg-agent` 进程。
 
-- If you receive the error, `gpg: decryption failed: secret key not available` - you likely need to install GnuPG version 2.x. Another possibility is that there is a problem with the PIN, e.g. it is too short or blocked.
+- 如果您收到错误`gpg: decryption failed: secret key not available` - 您可能需要安装 GnuPG 版本 2.x。 另一种可能性是 PIN 码有问题，例如 它太短或被阻止。
 
-- If you receive the error, `Yubikey core error: no yubikey present` - make sure the YubiKey is inserted correctly. It should blink once when plugged in.
+- 如果您收到错误`Yubikey core error: no yubikey present` - 请确保 YubiKey 已正确插入，如果已插入请重新插入。 插入时它应该闪烁一次。
 
-- If you still receive the error, `Yubikey core error: no yubikey present` - you likely need to install newer versions of yubikey-personalize as outlined in [Required software](#required-software).
+- 如果您仍然收到错误 `Yubikey core error: no yubikey present` - 您可能需要安装较新版本的 yubikey-personalize，如 [所需软件](#所需软件) 中所述。
 
-- If you receive the error, `Yubikey core error: write error` - YubiKey is likely locked. Install and run yubikey-personalization-gui to unlock it.
+- 如果您收到错误`Yubikey core error: write error` - YubiKey 可能已锁定。 安装并运行 yubikey-personalization-gui 以解锁它。
 
-- If you receive the error, `Key does not match the card's capability` - you likely need to use 2048 bit RSA key sizes.
+- 如果您收到错误`Key does not match the card's capability` - 您可能需要使用RSA-2048。**译者注：**也可能是固件版本过低
 
-- If you receive the error, `sign_and_send_pubkey: signing failed: agent refused operation` - make sure you replaced `ssh-agent` with `gpg-agent` as noted above.
+- 如果您收到错误`sign_and_send_pubkey: signing failed: agent refused operation` - 请确保将`ssh-agent`替换为`gpg-agent`。
 
-- If you still receive the error, `sign_and_send_pubkey: signing failed: agent refused operation` - [run the command](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=835394) `gpg-connect-agent updatestartuptty /bye`
+- 如果您仍然收到错误，`sign_and_send_pubkey: signing failed: agent refused operation` - [运行命令](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=835394)`gpg-connect-agent updatestartuptty /bye`
 
-- If you still receive the error, `sign_and_send_pubkey: signing failed: agent refused operation` - edit `~/.gnupg/gpg-agent.conf` to set a valid `pinentry` program path, e.g. `pinentry-program /usr/local/bin/pinentry-mac` on macOS.
+- 如果您仍然收到错误`sign_and_send_pubkey: signing failed: agent refused operation` - 编辑`~/.gnupg/gpg-agent.conf`以设置有效的`pinentry`程序路径，例如 macOS 上的 `pinentry-program /usr/local/bin/pinentry-mac`。
 
-- If you still receive the error, `sign_and_send_pubkey: signing failed: agent refused operation` - it is a [known issue](https://bbs.archlinux.org/viewtopic.php?id=274571) that openssh 8.9p1 and higher has issues with YubiKey. Adding `KexAlgorithms -sntrup761x25519-sha512@openssh.com` to `/etc/ssh/ssh_config` often resolves the issue.
+- 如果您仍然收到错误`sign_and_send_pubkey: signing failed: agent refused operation` - 这是一个[已知问题](https://bbs.archlinux.org/viewtopic.php?id=274571)，在openssh 8.9p1 及更高版本中使用 YubiKey 存在问题。 将`KexAlgorithms -sntrup761x25519-sha512@openssh.com` 添加到`/etc/ssh/ssh_config`通常可以解决该问题。
 
-- If you receive the error, `The agent has no identities` from `ssh-add -L`, make sure you have installed and started `scdaemon`.
+- 如果您从`ssh-add -L`收到错误`The agent has no identities`，请确保您已安装并启动`scdaemon`。
 
-- If you receive the error, `Error connecting to agent: No such file or directory` from `ssh-add -L`, the UNIX file socket that the agent uses for communication with other processes may not be set up correctly. On Debian, try `export SSH_AUTH_SOCK="/run/user/$UID/gnupg/S.gpg-agent.ssh"`. Also see that `gpgconf --list-dirs agent-ssh-socket` is returning single path, to existing `S.gpg-agent.ssh` socket.
+- 如果您从`ssh-add -L`收到错误`Error connecting to agent: No such file or directory`，则代理用于与其他进程通信的 UNIX 文件套接字可能未正确设置。 在 Debian 上，尝试 `export SSH_AUTH_SOCK="/run/user/$UID/gnupg/S.gpg-agent.ssh"`。 另外，执行`gpgconf --list-dirs agent-ssh-socket`返回现有`S.gpg-agent.ssh`套接字的路径。
 
-- If you receive the error, `Permission denied (publickey)`, increase ssh verbosity with the `-v` flag and ensure the public key from the card is being offered: `Offering public key: RSA SHA256:abcdefg... cardno:00060123456`. If it is, ensure you are connecting as the right user on the target system, rather than as the user on the local system. Otherwise, be sure `IdentitiesOnly` is not [enabled](https://github.com/FiloSottile/whosthere#how-do-i-stop-it) for this host.
+- 如果您收到错误`Permission denied (publickey)`，请使用`-v`参数查看 ssh 详细输出，并确保已提供来自卡的公钥：`Offering public key: RSA SHA256:abcdefg... cardno:00060123456`。 如果是，请确保您以目标系统上的正确用户身份进行连接，而不是以本地系统上的用户身份进行连接。 否则，请确保该主机未[启用](https://github.com/FiloSottile/whosthere#how-do-i-stop-it)`IdentitiesOnly`。
 
-- If SSH authentication still fails - add up to 3 `-v` flags to the `ssh` client to increase verbosity.
+- 如果 SSH 身份验证仍然失败 - 向`ssh`客户端添加最多 3 个`-v`参数以增加输出的详细程度。
 
-- If it still fails, it may be useful to stop the background `sshd` daemon process service on the server (e.g. using `sudo systemctl stop sshd`) and instead start it in the foreground with extensive debugging output, using `/usr/sbin/sshd -eddd`. Note that the server will not fork and will only process one connection, therefore has to be re-started after every `ssh` test.
+- 如果仍然失败，则停止服务器上的后台`sshd`守护进程进程服务（例如使用`sudo systemctl stop sshd`）并使用`/usr/sbin/sshd -eddd`在前台启动它以查看调试输出。 请注意，当前状态服务器只会处理一个连接，因此在每次·ssh·测试后都必须重新启动服务。
 
-- If you receive the error, `Please insert the card with serial number: *` see [using of multiple keys](#using-multiple-keys).
+- 如果您收到错误消息`Please insert the card with serial number: *`，请参阅[使用多个密钥](#使用多个密钥)。
 
-- If you receive the error, `There is no assurance this key belongs to the named user` or `encryption failed: Unusable public key` use `gpg --edit-key` to set `trust` to `5 = I trust ultimately`.
+- 如果您收到错误`There is no assurance this key belongs to the named user`或`encryption failed: Unusable public key`，请使用`gpg --edit-key`将`trust`设置为`5 = I trust ultimately`。
 
-- If, when you try the above `--edit-key` command, you get the error `Need the secret key to do this` - manually specify trust for the key in `~/.gnupg/gpg.conf` by using the `trust-key [key ID]` directive.
+- 如果当您尝试上述`--edit-key`命令时，收到错误`Need the secret key to do this` - 使用`trust-key [key ID]`指令手动指定对`~/.gnupg/gpg.conf`中密钥的信任。
 
-- If, when using a previously provisioned YubiKey on a new computer with `pass`, you see the following error on `pass insert`, you need to adjust the trust associated with the key. See the note above.
+- If, when using a previously provisioned YubiKey on a new computer with `pass`, you see the following error on `pass insert`, you need to adjust the trust associated with the key. See the note above. **译文：**如果在带有`pass`的新计算机上使用之前配置的 YubiKey 时，您在`pass insert`上看到以下错误，则需要调整与密钥关联的信任。 请参阅上面的注释。
 
 ```
 gpg: 0x0000000000000000: There is no assurance this key belongs to the named user
 gpg: [stdin]: encryption failed: Unusable public key
 ```
 
-- If you receive the error, `gpg: 0x0000000000000000: skipped: Unusable public key`, `signing failed: Unusable secret key`, or `encryption failed: Unusable public key` the sub-key may be expired and can no longer be used to encrypt nor sign messages. It can still be used to decrypt and authenticate, however.
+- 如果您收到错误`gpg: 0x0000000000000000: skipped: Unusable public key`、`signing failed: Unusable secret key`或`encryption failed: Unusable public key`，则子密钥可能已过期，无法再用于加密或签名消息。 但是，它仍然可以用于解密和身份验证。
 
-- If you lost your GPG public key, follow [this guide](https://www.nicksherlock.com/2021/08/recovering-lost-gpg-public-keys-from-your-yubikey/) to recover it from YubiKey.
+- 如果您丢失了 GPG 公钥，请按照[本指南](https://www.nicksherlock.com/2021/08/recovering-lost-gpg-public-keys-from-your-yubikey/)从 YubiKey 恢复它。
 
-- Refer to Yubico article [Troubleshooting Issues with GPG](https://support.yubico.com/hc/en-us/articles/360013714479-Troubleshooting-Issues-with-GPG) for additional guidance.
+- 请参阅 Yubico 文章 [GPG 问题疑难解答](https://support.yubico.com/hc/en-us/articles/360013714479-Troubleshooting-Issues-with-GPG) 了解更多指导。
 
-# Alternatives
+# 备选方案
 
-* [`piv-agent`](https://github.com/smlx/piv-agent) is an SSH and GPG agent which you can use with your PIV hardware security device (e.g. a Yubikey).
-* [`keytotpm`](https://www.gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html) is an option to use GnuPG with TPM systems.
+* [`piv-agent`](https://github.com/smlx/piv-agent) 是一个 SSH 和 GPG 代理，您可以将其与 PIV 硬件安全设备（例如 Yubikey）一起使用。
+* [`keytotpm`](https://www.gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html) 是在 TPM 系统中使用 GnuPG 的一个选项。
 
-## Create keys with batch
+## 使用批处理创建密钥
 
-Keys can also be generated using template files and the `batch` parameter - see [GnuPG documentation](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html).
+还可以使用模板文件和`batch`参数生成密钥 - 请参阅 [GnuPG 文档](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html)。
 
-Start from the [gen-params-rsa4096](contrib/gen-params-rsa4096) template. If you're using GnuPG v2.1.7 or newer, you can also use the ([gen-params-ed25519](contrib/gen-params-ed25519) template. These templates will not set the master key to expire - see [Note #3](#notes).
+从 [gen-params-rsa4096](https://github.com/drduh/YubiKey-Guide/blob/master/contrib/gen-params-rsa4096) 模板开始。 如果您使用的是 GnuPG v2.1.7 或更高版本，您还可以使用 [gen-params-ed25519](https://github.com/drduh/YubiKey-Guide/blob/master/contrib/gen-params-ed25519) 模板。这些模板不会将主密钥设置为过期 - 请参阅[注释 #3](#注释)。
 
-Generate master key:
+生成主密钥：
 
-```console
+```bash
 $ gpg --batch --generate-key gen-params-rsa4096
 gpg: Generating a basic OpenPGP key
 gpg: key 0xEA5DE91459B80592 marked as ultimately trusted
@@ -2882,9 +2918,9 @@ gpg: revocation certificate stored as '/tmp.FLZC0xcM/openpgp-revocs.d/D6F924841F
 gpg: done
 ```
 
-Verify the result:
+验证结果：
 
-```console
+```bash
 $ gpg --list-key
 gpg: checking the trustdb
 gpg: marginals needed: 3  completes needed: 1  trust model: pgp
@@ -2896,34 +2932,34 @@ pub   rsa4096/0xFF3E7D88647EBCDB 2021-08-22 [C]
 uid                   [ultimate] Dr Duh <doc@duh.to>
 ```
 
-The key fingerprint (`011C E16B D45B 27A5 5BA8 776D FF3E 7D88 647E BCDB`) will be used to create the three subkeys for signing, authentication and encryption.
+密钥指纹（`011C E16B D45B 27A5 5BA8 776D FF3E 7D88 647E BCDB`）将用于创建用于签名、身份验证和加密的三个子密钥。
 
-Now create the three subkeys for signing, authentication and encryption. Use a 1 year expiration for sub-keys - they can be renewed using the offline master key, see [rotating keys](#rotating-keys).
+现在创建用于签名、身份验证和加密的三个子密钥。 子密钥的有效期为 1 年 - 可以使用离线主密钥更新它们，请参阅[轮替密钥](#轮替密钥)。
 
-We will use the the quick key manipulation interface of GNUPG (with `--quick-add-key`), see [the documentation](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html#Unattended-GPG-key-generation).
+我们将使用 GNUPG 的快速密钥操作界面（使用 `--quick-add-key`），请参阅[文档](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html#Unattended-GPG-key-generation)。
 
-Create a [signing subkey](https://stackoverflow.com/questions/5421107/can-rsa-be-both-used-as-encryption-and-signature/5432623#5432623):
+创建一个[签名子密钥](https://stackoverflow.com/questions/5421107/can-rsa-be-both-used-as-encryption-and-signature/5432623#5432623)：
 
-```console
+```bash
 $ gpg --quick-add-key "011C E16B D45B 27A5 5BA8  776D FF3E 7D88 647E BCDB" \
   rsa4096 sign 1y
 ```
 
-Now create an [encryption subkey](https://www.cs.cornell.edu/courses/cs5430/2015sp/notes/rsa_sign_vs_dec.php):
+现在创建一个[加密子密钥](https://www.cs.cornell.edu/courses/cs5430/2015sp/notes/rsa_sign_vs_dec.php)：
 
-```console
+```bash
 $ gpg --quick-add-key "011C E16B D45B 27A5 5BA8  776D FF3E 7D88 647E BCDB" \
   rsa4096 encrypt 1y
 ```
 
-Finally, create an [authentication subkey](https://superuser.com/questions/390265/what-is-a-gpg-with-authenticate-capability-used-for):
+最后，创建一个[身份验证子密钥](https://superuser.com/questions/390265/what-is-a-gpg-with-authenticate-capability-used-for)：
 
-```console
+```bash
 $ gpg --quick-add-key "011C E16B D45B 27A5 5BA8  776D FF3E 7D88 647E BCDB" \
   rsa4096 auth 1y
 ```
 
-Continue with the Verify section of this guide.
+继续本指南的[验证](#验证)部分。
 
 # Links
 
