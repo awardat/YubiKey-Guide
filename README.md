@@ -99,7 +99,7 @@
 
 # 选购
 
-除蓝色“security key”和“Bio Series - FIDO Edition”之外的所有 YubiKey 均与本指南兼容（NEO 型号仅限于 2048 位 RSA 密钥）。 点击[此处]比较 YubiKeys (https://www.yubico.com/products/yubikey-hardware/compare-products-series/)。 点击[此处]查看与 OpenPGP 兼容的 YubiKey 列表(https://support.yubico.com/hc/en-us/articles/360013790259-Using-Your-YubiKey-with-OpenPGP)获得。 2021 年 5 月，Yubico 还发布了一份新闻稿和博客文章，介绍了在8.2或更高版本的 OpenSSH 环境下使用Yubikey 驻留 ssh 密钥（甚至括蓝色“security key”），请参阅[此处](https://www.yubico.com/blog/github-now-supports-ssh-security-keys/)了解详细信息。
+除蓝色“security key”和“Bio Series - FIDO Edition”之外的所有 YubiKey 均与本指南兼容（NEO 型号仅限于 2048 位 RSA 密钥）。 点击[此处](https://www.yubico.com/products/yubikey-hardware/compare-products-series/)比较 YubiKey产品线 。 点击[此处](https://support.yubico.com/hc/en-us/articles/360013790259-Using-Your-YubiKey-with-OpenPGP)查看与 OpenPGP 兼容的 YubiKey 列表。 2021 年 5 月，Yubico 还发布了一份新闻稿和博客文章，介绍了在8.2或更高版本的 OpenSSH 环境下使用Yubikey 驻留 ssh 密钥（甚至括蓝色“security key”），请参阅[此处](https://www.yubico.com/blog/github-now-supports-ssh-security-keys/)了解详细信息。
 
 要验证 YubiKey 是否为正版，请打开 [支持 U2F 的浏览器](https://support.yubico.com/support/solutions/articles/15000009591-how-to-confirm-your-yubico-device-is-genuine-with-u2f) 打开 [https://www.yubico.com/genuine/](https://www.yubico.com/genuine/)。 插入 Yubico 设备，然后选择_Verify Device_开始验证。 出现提示时触摸 YubiKey，如果询问，则允许其查看设备的品牌和型号。 如果您看到“Yubico device verified”，则该设备是正品。
 
