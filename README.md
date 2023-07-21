@@ -1,4 +1,4 @@
-> **译者注**：为了避免在实际操作的时候产生偏差或者参阅[原文](https://github.com/drduh/YubiKey-Guide)的时候看一句查一句，进行了简单的翻译，主要为机翻，人工对少量语句进行了调整。如果有看不懂的地方以原文为准。
+> **译者注：**  为了避免在实际操作的时候产生偏差或者参阅[原文](https://github.com/drduh/YubiKey-Guide)的时候看一句查一句，进行了简单的翻译，主要为机翻，人工对少量语句进行了调整。如果有看不懂的地方以原文为准。
 > 本文档目前仅作为个人学习GPG的记录，未对所有过程进行验证，不保证指南中的内容全部可用。
 > 根据个人使用情况进行更新，不保证跟随原文更新翻译。
 
@@ -134,7 +134,7 @@ $ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/S
 $ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/$(awk '/xfce.iso/ {print $2}' SHA512SUMS)
 ```
 
-> **译者注：**可以使用较近的官方网站提供的镜像站以提高下载效率，但不应忘记验证签名以确保镜像未被篡改。
+> **译者注：** 可以使用较近的官方网站提供的镜像站以提高下载效率，但不应忘记验证签名以确保镜像未被篡改。
 
 使用 GPG 验证哈希文件的签名：
 
@@ -231,7 +231,7 @@ $ sudo apt update ; sudo apt -y upgrade
 $ sudo apt -y install wget gnupg2 gnupg-agent dirmngr cryptsetup scdaemon pcscd secure-delete hopenpgp-tools yubikey-personalization
 ```
 
-> **译者注：**[在Debian 12中不包含hopenpgp-tools包](https://github.com/drduh/YubiKey-Guide/issues/389)，这个包主要用于[校验](#校验)，也可以通过其他方式进行校验，也可参考[此处](https://github.com/drduh/YubiKey-Guide/pull/386/files)安装。
+> **译者注：** [在Debian 12中不包含hopenpgp-tools包](https://github.com/drduh/YubiKey-Guide/issues/389)，这个包主要用于[校验](#校验)，也可以通过其他方式进行校验，也可参考[此处](https://github.com/drduh/YubiKey-Guide/pull/386/files)安装。
 
 **注意** Live Ubuntu 镜像 [可能需要修改](https://github.com/drduh/YubiKey-Guide/issues/116)  `/etc/apt/sources.list` 并且可能需要额外的软件包：
 
@@ -253,7 +253,7 @@ $ sudo service pcscd start
 $ ~/.local/bin/ykman openpgp info
 ```
 
-> **译者注：**在较新的Debian版本中修改了pip安装方式，如果使用`pip3 install`出现报错，则根据提示信息使用`apt install python3-xxx`命令安装，xxx为原pip包名称
+> **译者注：** 在较新的Debian版本中修改了pip安装方式，如果使用`pip3 install`出现报错，则根据提示信息使用`apt install python3-xxx`命令安装，xxx为原pip包名称
 
 ```bash
 $ sudo apt -y install pcscd python3-yubikey-manager python3-ykman
@@ -602,7 +602,7 @@ throw-keyids
 
 系统会提示您输入并验证口令 - 请妥善保存，因为稍后您将多次需要它。
 
-> **译者注：**passphrase、password等词汇在本文中统一译为口令
+> **译者注：** passphrase、password等词汇在本文中统一译为口令
 
 生成一个强口令，可以将其写在安全的地方或记住：
 
@@ -1719,7 +1719,7 @@ $  gpg-connect-agent "scd serialno" "learn --force" /bye
 
 # 在多台主机上使用
 
-> **译者注：**本章节来自尚未合并的拉取[2023-06-28 Add section on setting up multiple hosts](https://github.com/drduh/YubiKey-Guide/pull/388)
+> **译者注：** 本章节来自尚未合并的拉取[2023-06-28 Add section on setting up multiple hosts](https://github.com/drduh/YubiKey-Guide/pull/388)
 
 在多个主机上使用 YubiKey 会很方便：
 
@@ -2834,7 +2834,7 @@ $ ~/scripts/remove-keygrips.sh $KEYID
 
 # 添加身份
 
-> **译者注：**来自[Add instructions for adding a new identity](https://github.com/drduh/YubiKey-Guide/pull/380)
+> **译者注：** 来自[Add instructions for adding a new identity](https://github.com/drduh/YubiKey-Guide/pull/380)
 
 创建、备份密钥并将其移动到 YubiKey 后，您可能需要添加身份。 为此，您需要首先将身份添加到主密钥中，然后重置 YubiKey 并使用`keytocard`再次将子密钥移动到您的卡中。
 
@@ -2960,7 +2960,7 @@ $ sudo cryptsetup luksClose /dev/mapper/secret
 
 **注意** 这在 YubiKey NEO 上是不可能的。
 
-**译者注：**根据[Update ykman set-touch instructions](https://github.com/drduh/YubiKey-Guide/pull/383)调整了描述。
+**译者注：** 根据[Update ykman set-touch instructions](https://github.com/drduh/YubiKey-Guide/pull/383)调整了描述。
 
 默认情况下，插入密钥并首次使用 PIN 解锁后，YubiKey 将执行加密、签名和身份验证操作，无需用户执行任何操作。
 
@@ -3131,7 +3131,7 @@ Admin PIN:   12345678
 
 - 如果您收到错误`Yubikey core error: write error` - YubiKey 可能已锁定。 安装并运行 yubikey-personalization-gui 以解锁它。
 
-- 如果您收到错误`Key does not match the card's capability` - 您可能需要使用RSA-2048。**译者注：**也可能是固件版本过低
+- 如果您收到错误`Key does not match the card's capability` - 您可能需要使用RSA-2048。**译者注：** 也可能是固件版本过低
 
 - 如果您收到错误`sign_and_send_pubkey: signing failed: agent refused operation` - 请确保将`ssh-agent`替换为`gpg-agent`。
 
