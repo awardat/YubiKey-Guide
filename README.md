@@ -8,7 +8,7 @@
 
 > **安全说明**：如果您在 2021 年 1 月之前遵循本指南，您的 GPG *PIN* 和 *Admin PIN* 可能会保持其默认值（分别为“123456”和“12345678”）。 这将允许攻击者使用您的 Yubikey 或重置您的 PIN。 请参阅[更改 PIN](#change-pin) 部分，了解有关如何更改 PIN 的详细信息。
 
-如果您有意见或建议，请在 GitHub 上提交[Issue](https://github.com/drduh/YubiKey-Guide/issues)。
+如果您有意见或建议，请在**原作者** GitHub 上提交[Issue](https://github.com/drduh/YubiKey-Guide/issues)。
 
 # 目录
 
@@ -81,7 +81,7 @@
   - [macOS](#macos)
 - [远程主机（GPG代理转发）](#远程主机（GPG代理转发）)
   - [旧发行版的步骤](#旧发行版的步骤)
-  - [链式 GPG 代理转发](#链式 GPG 代理转发)
+  - [链式GPG代理转发](#链式GPG代理转发)
 - [使用多个密钥](#使用多个密钥)
 - [需要触摸](#需要触摸)
 - [Email](#email)
