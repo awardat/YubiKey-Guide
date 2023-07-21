@@ -2460,7 +2460,7 @@ enable-putty-support
 ### WSL
 
 这里的目标是使 WSL 内的 SSH 客户端与您正在使用的 Windows 代理（在我们的例子中为 gpg-agent.exe）一起工作。 这是我们要实现的目标：
-![WSL agent architecture](https://github.com/drduh/YubiKey-Guide/raw/master/media/schema_gpg.png)
+![WSL agent architecture](media/schema_gpg.png)
 
 **注意** 这仅适用于 SSH 代理转发。 实际上不支持真正的GPG转发（加密/解密）。 请参阅 [weasel-pageant](https://github.com/vuori/weasel-pageant) 了解更多信息或考虑使用 [wsl2-ssh-pageant](https://github.com/BlackReloaded/wsl2-ssh-pageant) ），支持 SSH 和 GPG 代理转发。
 
@@ -2909,7 +2909,7 @@ gpg: [stdin]: encryption failed: Unusable public key
 
 还可以使用模板文件和`batch`参数生成密钥 - 请参阅 [GnuPG 文档](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html)。
 
-从 [gen-params-rsa4096](https://github.com/drduh/YubiKey-Guide/blob/master/contrib/gen-params-rsa4096) 模板开始。 如果您使用的是 GnuPG v2.1.7 或更高版本，您还可以使用 [gen-params-ed25519](https://github.com/drduh/YubiKey-Guide/blob/master/contrib/gen-params-ed25519) 模板。这些模板不会将主密钥设置为过期 - 请参阅[注释 #3](#注释)。
+从 [gen-params-rsa4096](contrib/gen-params-rsa4096) 模板开始。 如果您使用的是 GnuPG v2.1.7 或更高版本，您还可以使用 [gen-params-ed25519](contrib/gen-params-ed25519) 模板。这些模板不会将主密钥设置为过期 - 请参阅[注释 #3](#注释)。
 
 生成主密钥：
 
