@@ -11,6 +11,9 @@
 # 
 # 5. Insert Yubikey2
 # 6. Run keytocard to transfer keys to Yubikey2
+#
+# Redo setp 4-6 if you have more Yubikey
+#
 # 7. QUIT and SAVE to make GPG point it's stubs to Yubikey2
 #
 # Running any decrypt, auth or sign will now ask you to insert Yubikey2
@@ -18,6 +21,6 @@
 # to repoint the key stubs to the inserted Yubikey
 
 read -p "Insert the Yubikey you want to use ....  "   ignore
-echo "Switching GPG to backup Yubikey ..."
+echo "Switching GPG to current Yubikey ..."
 
 gpg-connect-agent "scd serialno" "learn --force" /bye
