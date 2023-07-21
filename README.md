@@ -1715,6 +1715,8 @@ $  gpg-connect-agent "scd serialno" "learn --force" /bye
 	
 显然这个命令不容易记住，因此建议创建一个脚本或 shell 别名，以使其更加用户友好。
 
+原作者已将上述命令保存为一个脚本，依个人习惯将其更名为更中性的[switch-yubikey](contrib/switch-yubikey)
+
 # 清理
 
 在完成设置之前，请确保您已完成以下操作：
@@ -2909,6 +2911,8 @@ gpg: [stdin]: encryption failed: Unusable public key
 还可以使用模板文件和`batch`参数生成密钥 - 请参阅 [GnuPG 文档](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html)。
 
 从 [gen-params-rsa4096](contrib/gen-params-rsa4096) 模板开始。 如果您使用的是 GnuPG v2.1.7 或更高版本，您还可以使用 [gen-params-ed25519](contrib/gen-params-ed25519) 模板。这些模板不会将主密钥设置为过期 - 请参阅[注释 #3](#注释)。
+
+**注意 **使用前请修改`Name-Real`和`Name-Email`值
 
 生成主密钥：
 
