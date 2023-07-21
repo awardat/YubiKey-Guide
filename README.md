@@ -54,6 +54,7 @@
 - [校验智能卡](#校验智能卡)
 - [多个YubiKey](#多个yubikey)
   - [在多个Yubikey间切换](#在多个yubikey间切换)
+- [多台主机](#多台主机)
 - [清理](#清理)
 - [使用密钥](#使用密钥)
 - [密钥轮替](#密钥轮替)
@@ -1716,6 +1717,146 @@ $  gpg-connect-agent "scd serialno" "learn --force" /bye
 显然这个命令不容易记住，因此建议创建一个脚本或 shell 别名，以使其更加用户友好。
 
 原作者已将上述命令保存为一个脚本，依个人习惯将其更名为更中性的[switch-yubikey](contrib/switch-yubikey)
+
+# 多台主机
+
+在多个主机上使用 YubiKey 会很方便：
+
+* 一台台式机加一台笔记本电脑
+* 家庭和工作计算机
+* 像 [Tails](https://tails.boum.org) 这样的环境
+
+设置第二台主机的最简单方法是首先在已配置好 YubiKey 的主机上导出公钥和信任设置：
+
+``` bash
+$ gpg --armor --export $KEYID > gpg-public-key-$KEYID.asc
+$ gpg --export-ownertrust > gpg-owner-trust.txt
+```
+
+将这两个文件移动到第二台主机。 然后，在第二台主机上执行：
+
+1. 定义您的 KEYID。 例如：
+
+	``` bash
+	$ export KEYID=0xFF3E7D88647EBCDB
+	```
+
+2. 导入您的公钥：
+
+	``` bash
+	$ gpg --import gpg-public-key-$KEYID.asc
+	```
+
+3. 导入信任设置：
+
+	``` bash
+	$ gpg --import-ownertrust < gpg-owner-trust.txt
+	```
+
+4. 将 YubiKey 插入 USB 端口。
+5. 从 YubiKey 导入私钥存根：
+
+	``` bash
+	$ gpg --card-status
+	```
+
+如果您在旅行时需要设置第二台主机并且无法访问主要主机，则可以从密钥服务器导入公钥并手动设置信任：
+
+1. 定义您的 KEYID。 例如：
+
+	``` bash
+	$ export KEYID=0xFF3E7D88647EBCDB
+	```
+
+2. 从密钥服务器获取公钥。 例如：
+
+	``` bash
+	$ gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv $KEYID
+	```
+
+3. 设定完全信任：
+
+	``` bash
+	$ gpg --edit-key $KEYID
+	gpg> trust
+	Your decision? 5
+	Do you really want to set this key to ultimate trust? (y/N) y
+	gpg> quit
+	```
+
+4. 将 YubiKey 插入 USB 端口。
+5. 从 YubiKey 导入私钥存根：
+
+	``` bash
+	$ gpg --card-status
+	```
+
+另一种方法是将公钥的 URL 添加到 YubiKey：
+
+1. 定义您的 KEYID。 例如：
+
+	``` bash
+	$ KEYID=0xFF3E7D88647EBCDB
+	```
+
+2. 构建 URL（基于 [Shaw 2003](https://datatracker.ietf.org/doc/html/draft-shaw-openpgp-hkp-00)）：
+
+	``` bash
+	$ [[ ! "$KEYID" =~ ^"0x" ]] && KEYID="0x${KEYID}"
+	$ URL="hkps://keyserver.ubuntu.com:443/pks/lookup?op=get&search=${KEYID}"
+	$ echo $URL
+	hkps://keyserver.ubuntu.com:443/pks/lookup?op=get&search=0xFF3E7D88647EBCDB
+	```
+
+3. 将 YubiKey 插入 USB 端口。
+4. 将 URL 添加到您的 YubiKey（将提示您输入 YubiKey 的管理员 PIN 码）：
+
+	``` bash
+	$ gpg --edit-card
+	gpg/card> admin
+	gpg/card> url
+	URL to retrieve public key: hkps://keyserver.ubuntu.com:443/pks/lookup?op=get&search=0xFF3E7D88647EBCDB
+	gpg/card> quit
+	```
+
+	**注意：**您不必使用 *keyserver* URL。 您可以将公钥导出为ASCII Armored File (.asc)，并将其上传到网络上任何可以使用 HTTP/HTTPS 下载的位置。
+
+一旦您的公钥 URL 出现在 YubiKey 上，设置新主机就变成：
+
+1. 将 YubiKey 插入 USB 端口。
+
+2. 使用`fetch`子命令通过存储在卡上的 URL 检索您的公钥：
+
+	``` bash
+	$ gpg --edit-card
+
+	gpg/card> fetch
+	gpg: requesting key from 'hkps://keyserver.ubuntu.com:443/pks/lookup?op=get&search=0xFF3E7D88647EBCDB'
+	gpg: /home/pi/.gnupg/trustdb.gpg: trustdb created
+	gpg: key FF3E7D88647EBCDB: public key "Dr Duh <doc@duh.to>" imported
+	gpg: Total number processed: 1
+	gpg:               imported: 1
+
+	gpg/card> quit
+	```
+
+	此步骤还从 YubiKey 导入私钥存根。
+
+3. 定义您的 KEYID（出现在上一步的输出中）：
+
+	``` bash
+	$ export KEYID=0xFF3E7D88647EBCDB
+	```
+
+4. 设定完全信任：
+
+	``` bash
+	$ gpg --edit-key $KEYID
+	gpg> trust
+	Your decision? 5
+	Do you really want to set this key to ultimate trust? (y/N) y
+	gpg> quit
+	```
 
 # 清理
 
