@@ -54,7 +54,7 @@
 - [校验智能卡](#校验智能卡)
 - [多个YubiKey](#多个yubikey)
   - [在多个Yubikey间切换](#在多个yubikey间切换)
-- [多台主机](#多台主机)
+- [在多台主机上使用](#在多台主机上使用)
 - [清理](#清理)
 - [使用密钥](#使用密钥)
 - [密钥轮替](#密钥轮替)
@@ -86,6 +86,9 @@
   - [旧发行版的步骤](#旧发行版的步骤)
   - [链式GPG代理转发](#链式gpg代理转发)
 - [使用多个密钥](#使用多个密钥)
+- [添加身份](#添加身份)
+  - [为您的主密钥添加身份](#为您的主密钥添加身份)
+  - [更新您的YubiKey](#更新您的yubikey)
 - [需要触摸](#需要触摸)
 - [Email](#email)
   - [Mailvelope on macOS](#mailvelope)
@@ -207,10 +210,8 @@ $ doas dd if=debian-live-*-amd64-xfce.iso of=/dev/rsd2c bs=4m
 ```
 
 **Windows**
+使用启动盘创建工具，如[Rufus](https://rufus.ie/)。
 
-```
-使用启动盘创建工具，如[Rufus](https://rufus.ie/)
-```
 
 关闭计算机并断开内部硬盘驱动器和所有不必要的外围设备。 如果在 VM 内运行，则可以跳过此部分，因为不应将此类设备附加到 VM，因为映像仍将作为“LiveCD”运行。
 
@@ -230,7 +231,7 @@ $ sudo apt update ; sudo apt -y upgrade
 $ sudo apt -y install wget gnupg2 gnupg-agent dirmngr cryptsetup scdaemon pcscd secure-delete hopenpgp-tools yubikey-personalization
 ```
 
-> **译者注：[在Debian 12中不包含hopenpgp-tools包](https://github.com/drduh/YubiKey-Guide/issues/389)，这个包主要用于[校验](#校验)，也可以通过其他方式进行校验
+> **译者注：**[在Debian 12中不包含hopenpgp-tools包](https://github.com/drduh/YubiKey-Guide/issues/389)，这个包主要用于[校验](#校验)，也可以通过其他方式进行校验，也可参考[此处](https://github.com/drduh/YubiKey-Guide/pull/386/files)安装。
 
 **注意** Live Ubuntu 镜像 [可能需要修改](https://github.com/drduh/YubiKey-Guide/issues/116)  `/etc/apt/sources.list` 并且可能需要额外的软件包：
 
@@ -624,8 +625,6 @@ BSSYMUGGTJQVWZZWOPJG
 使用 GPG 生成新密钥，选择“(8) RSA (set your own capabilities)”、仅选择“Certify”（认证）功能和和“4096”位密钥。
 
 **不要**为主（认证）密钥设置过期时间 - 请参阅[注释 #3](#注释)。
-
-> **译者注**鉴于5.2.3以后版本的Yibikey均支持ECC算法，可以根据需求选用ECC算法生成密钥，操作方法与RSA相同
 
 ```bash
 $ gpg --expert --full-generate-key
@@ -1718,7 +1717,9 @@ $  gpg-connect-agent "scd serialno" "learn --force" /bye
 
 原作者已将上述命令保存为一个脚本，依个人习惯将其更名为更中性的[switch-yubikey](contrib/switch-yubikey)
 
-# 多台主机
+# 在多台主机上使用
+
+> **译者注：**本章节来自尚未合并的拉取[2023-06-28 Add section on setting up multiple hosts](https://github.com/drduh/YubiKey-Guide/pull/388)
 
 在多个主机上使用 YubiKey 会很方便：
 
@@ -2831,9 +2832,135 @@ $ ~/scripts/remove-keygrips.sh $KEYID
 
 请参阅问题 [#19](https://github.com/drduh/YubiKey-Guide/issues/19) 和 [#112](https://github.com/drduh/YubiKey-Guide/issues/112) 中的讨论了解更多信息和故障排除步骤。
 
+# 添加身份
+
+> **译者注：**来自[Add instructions for adding a new identity](https://github.com/drduh/YubiKey-Guide/pull/380)
+
+创建、备份密钥并将其移动到 YubiKey 后，您可能需要添加身份。 为此，您需要首先将身份添加到主密钥中，然后重置 YubiKey 并使用`keytocard`再次将子密钥移动到您的卡中。
+
+## 为您的主密钥添加身份
+
+要向您的 GPG 密钥添加另一个身份，请遵循与生成密钥相同的过程：启动到安全环境，安装所需的软件并断开网络连接。
+
+连接保存主密钥的离线加密存储设备并识别磁盘标签：
+
+```bash
+$ sudo dmesg | tail
+mmc0: new high speed SDHC card at address a001
+mmcblk0: mmc0:a001 SS16G 14.8 GiB (ro)
+mmcblk0: p1 p2
+```
+
+解密并挂载卷：
+
+```bash
+$ sudo cryptsetup luksOpen /dev/mmcblk0p1 secret
+Enter passphrase for /dev/mmcblk0p1:
+
+$ sudo mount /dev/mapper/secret /mnt/encrypted-storage
+```
+
+将备份恢复到临时目录：
+
+```bash
+$ export GNUPGHOME=$(mktemp -d -t gnupg_$(date +%Y%m%d%H%M)_XXX)
+
+$ cp -avi /mnt/encrypted-storage/tmp.XXX/* $GNUPGHOME
+```
+
+编辑您的主密钥以添加您的新身份：
+
+```bash
+$ KEYID=«your keyID»
+$ gpg --expert --edit-key $KEYID
+
+gpg> adduid
+Real name: «your name»
+Email address: «user@domain.tld»
+Comment: «something»
+You selected this USER-ID:
+      "«your name» («something») <«user@domain.tld»>"
+
+Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? O
+
+gpg> trust
+
+Please decide how far you trust this user to correctly verify other users' keys
+(by looking at passports, checking fingerprints from different sources, etc.)
+
+  1 = I don't know or won't say
+  2 = I do NOT trust
+  3 = I trust marginally
+  4 = I trust fully
+  5 = I trust ultimately
+  m = back to the main menu
+
+Your decision? 5
+Do you really want to set this key to ultimate trust? (y/N) y
+
+gpg> save
+```
+
+现在，重新导出您的主密钥和子密钥：
+
+```bash
+$ gpg --armor --export-secret-keys $KEYID > $GNUPGHOME/mastersub.key
+
+$ gpg --armor --export-secret-subkeys $KEYID > $GNUPGHOME/sub.key
+```
+
+和你的公钥：
+
+```bash
+$ gpg --armor --export $KEYID | sudo tee /mnt/public/gpg-$KEYID-$(date +%F).asc
+```
+
+和以前一样，在 Windows 上，请注意，使用除 .gpg 之外的任何扩展名或尝试 IO 重定向到文件都会混淆密钥，从而导致以后无法再次导入它：
+
+```bash
+$ gpg -o \path\to\dir\mastersub.gpg --armor --export-secret-keys $KEYID
+
+$ gpg -o \path\to\dir\sub.gpg --armor --export-secret-subkeys $KEYID
+
+$ gpg -o \path\to\dir\pubkey.gpg --armor --export $KEYID
+```
+
+将**新**临时工作目录复制到加密的离线存储：
+
+```bash
+$ sudo cp -avi $GNUPGHOME /mnt/encrypted-storage
+```
+
+现在应该至少备份两个版本的主密钥和子密钥：
+
+```bash
+$ ls /mnt/encrypted-storage
+lost+found  tmp.ykhTOGjR36  tmp.2gyGnyCiHs
+```
+
+卸载并关闭加密卷：
+
+```bash
+$ sudo umount /mnt/encrypted-storage
+
+$ sudo cryptsetup luksClose /dev/mapper/secret
+```
+
+## 更新您的YubiKey
+
+现在您的密钥已使用您的新身份进行了更新，您必须将它们移至您的 YubiKey 上。 为此，您需要首先[重置](#重置) YubiKey 上的 OpenPGP 程序，然后再次按照步骤[配置智能卡](#配置智能卡)。
+
+现在您可以将密钥[传输](#传输密钥)到您的 YubiKey。 完成此操作后，请务必重新启动或安全地删除 GPG 临时工作目录，并`unset GNUPGHOME`。
+
+最后，重新导入公钥，如[使用密钥](#使用密钥)部分所述。
+
+运行`gpg -K`以确认您的新身份已列出。
+
 # 需要触摸
 
 **注意** 这在 YubiKey NEO 上是不可能的。
+
+**译者注：**根据[Update ykman set-touch instructions](https://github.com/drduh/YubiKey-Guide/pull/383)调整了描述。
 
 默认情况下，插入密钥并首次使用 PIN 解锁后，YubiKey 将执行加密、签名和身份验证操作，无需用户执行任何操作。
 
@@ -2856,8 +2983,10 @@ $ ykman openpgp keys set-touch sig on
 加密：
 
 ```bash
-$ ykman openpgp keys set-touch enc on
+$ ykman openpgp keys set-touch dec on
 ```
+
+**注意** 5.1.0 之前的 YubiKey Manager 版本使用 `enc` 而不是 `dec` 进行加密。
 
 根据 YubiKey 的使用方式，您可能需要查看每个选项的策略选项并相应地调整上述命令。 可以使用以下命令查看它们：
 
@@ -2865,28 +2994,27 @@ $ ykman openpgp keys set-touch enc on
 $ ykman openpgp keys set-touch -h
 Usage: ykman openpgp keys set-touch [OPTIONS] KEY POLICY
 
-  Set touch policy for OpenPGP keys.
+  Set the touch policy for OpenPGP keys.
 
-  KEY     Key slot to set (sig, enc, aut or att).
-  POLICY  Touch policy to set (on, off, fixed, cached or cached-fixed).
-
-  The touch policy is used to require user interaction for all operations using the private key on the YubiKey. The touch policy is set individually for each key slot. To see the current touch policy, run
-
-      $ ykman openpgp info
+  The touch policy is used to require user interaction for all operations using the private key on the YubiKey. The touch policy is set
+  individually for each key slot. To see the current touch policy, run the "openpgp info" subcommand.
 
   Touch policies:
 
-  Off (default)   No touch required
-  On              Touch required
-  Fixed           Touch required, can't be disabled without a full reset
-  Cached          Touch required, cached for 15s after use
-  Cached-Fixed    Touch required, cached for 15s after use, can't be disabled
-                  without a full reset
+ Off (default)   no touch required
+  On              touch required
+  Fixed           touch required, can't be disabled without deleting the private key
+  Cached          touch required, cached for 15s after use
+  Cached-Fixed    touch required, cached for 15s after use, can't be disabled
+                  without deleting the private key
+                  
+  KEY     key slot to set (sig, dec, aut or att)
+  POLICY  touch policy to set (on, off, fixed, cached or cached-fixed)
 
 Options:
-  -a, --admin-pin TEXT  Admin PIN for OpenPGP.
-  -f, --force           Confirm the action without prompting.
-  -h, --help            Show this message and exit.
+  -a, --admin-pin TEXT  Admin PIN for OpenPGP
+  -f, --force           confirm the action without prompting
+  -h, --help            show this message and exit
 ```
 
 如果要在打开和验证加密邮件的电子邮件客户端中使用 YubiKey，则可能需要`Cached`或`Cached-Fixed`。
