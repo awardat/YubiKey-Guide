@@ -1,7 +1,6 @@
 > **译者注**：为了避免在实际操作的时候产生偏差或者参阅[原文](https://github.com/drduh/YubiKey-Guide)的时候看一句查一句，进行了简单的翻译，主要为机翻，人工对少量语句进行了调整。如果有看不懂的地方以原文为准。
 > 本文档目前仅作为个人学习GPG的记录，未对所有过程进行验证，不保证指南中的内容全部可用。
 > 根据个人使用情况进行更新，不保证跟随原文更新翻译。
-> 部分目录链接不可用，请使用阅读器目录。
 
 这是使用[YubiKey](https://www.yubico.com/products/yubikey-hardware/)作为[智能卡](https://security.stackexchange.com/questions/38924/how-does-storing-gpg-ssh-private-keys-on-smart-cards-compare-to-plain-usb-drives)用于存储GPG加密、签名和身份验证密钥，以及用于SSH的指南。本文档中的许多原则也适用于其他智能卡设备。
 
@@ -45,16 +44,16 @@
 - [备份](#备份)
 - [导出公钥](#导出公钥)
 - [配置智能卡](#配置智能卡)
-  - [启用KDF](#启用KDF)
-  - [修改PIN](#修改PIN)
+  - [启用KDF](#启用kdf)
+  - [修改PIN](#修改pin)
   - [设置信息](#设置信息)
 - [传输密钥](#传输密钥)
   - [签名密钥](#签名密钥)
   - [加密密钥](#加密密钥)
   - [身份验证密钥](#身份验证密钥)
 - [校验智能卡](#校验智能卡)
-- [多个YubiKey](#多个YubiKey)
-  - [在多个Yubikey间切换](#在多个Yubikey间切换)
+- [多个YubiKey](#多个yubiKey)
+  - [在多个Yubikey间切换](#在多个yubikey间切换)
 - [清理](#清理)
 - [使用密钥](#使用密钥)
 - [密钥轮替](#密钥轮替)
@@ -66,29 +65,29 @@
   - [创建配置](#创建配置)
   - [替换代理程序](#替换代理程序)
   - [复制公钥](#复制公钥)
-  - [（可选）为身份文件配置保存公钥](#（可选）为身份文件配置保存公钥)
+  - [(可选)为身份文件配置保存公钥](#(可选)为身份文件配置保存公钥)
   - [使用公钥认证连接](#使用公钥认证连接)
   - [导入SSH密钥](#导入SSH密钥)
-  - [远程主机（SSH代理转发）](#远程主机（SSH代理转发）)
+  - [远程主机(SSH代理转发)](#远程主机(SSH代理转发))
     - [使用ssh-agent](#使用ssh-agent)
-    - [使用S.gpg-agent.ssh](#使用S.gpg-agent.ssh)
+    - [使用S.gpg-agent.ssh](#使用Sgpg-agentssh)
     - [链式SSH代理转发](#链式SSH代理转发)
   - [GitHub](#github)
   - [OpenBSD](#openbsd)
   - [Windows](#windows)
     - [WSL](#wsl)
-      - [使用ssh-agent还是S.weasel-pegant](#使用ssh-agent还是S.weasel-pegant)
+      - [使用ssh-agent还是S.weasel-pegant](#使用ssh-agent还是sweasel-pegant)
       - [先决条件](#先决条件)
-      - [WSL配置](#WSL配置)
+      - [WSL配置](#wsl配置)
       - [远程主机配置](#远程主机配置)
   - [macOS](#macos)
-- [远程主机（GPG代理转发）](#远程主机（GPG代理转发）)
+- [远程主机(GPG代理转发)](#远程主机(GPG代理转发))
   - [旧发行版的步骤](#旧发行版的步骤)
   - [链式GPG代理转发](#链式GPG代理转发)
 - [使用多个密钥](#使用多个密钥)
 - [需要触摸](#需要触摸)
 - [Email](#email)
-  - [Mailvelope on macOS](#mailvelope-on-macos)
+  - [Mailvelope on macOS](#mailvelope)
   - [Mutt](#mutt)
 - [重置](#重置)
 - [重置后恢复](#重置后恢复)
@@ -2226,7 +2225,7 @@ $ ssh-add -L
 ssh-rsa AAAAB4NzaC1yc2EAAAADAQABAAACAz[...]zreOKM+HwpkHzcy9DQcVG2Nw== cardno:000605553211
 ```
 
-## （可选）为身份文件配置保存公钥
+## (可选)为身份文件配置保存公钥
 
 默认情况下，SSH 尝试使用通过代理可用的所有身份。 准确管理 SSH 将使用哪些密钥连接到服务器通常是一个好主意，例如分离不同的角色或[避免被不受信任的 ssh 服务器指纹识别](https://blog.filippo.io/ssh-whoami-filippo-io/)。 为此，您需要使用命令行参数`-i [identity_file]`或`.ssh/config`中的`IdentityFile`和 `IdentitiesOnly`选项。
 
@@ -2306,7 +2305,7 @@ $ ssh-add -E md5 -l
 
 使用密钥时，将调用`pinentry`来请求密钥的口令。 口令将被缓存 10 分钟的空闲时间（最多 2 小时）。
 
-## 远程主机（SSH代理转发）
+## 远程主机(SSH代理转发)
 
 **注意** SSH 代理转发可以[增加额外风险](https://matrix.org/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident/# ssh-agent-forwarding-should-be-disabled) - 谨慎操作！
 
@@ -2576,7 +2575,7 @@ launchctl load $HOME/Library/LaunchAgents/gnupg.gpg-agent-symlink.plist
 
 您需要重新启动或注销并重新登录才能激活这些更改。
 
-# 远程主机（GPG代理转发）
+# 远程主机(GPG代理转发)
 
 本节与[SSH](#ssh)中的ssh-agent转发不同，因为gpg-agent转发具有更广泛的用途，不仅限于ssh。
 
@@ -2643,7 +2642,7 @@ extra-socket /run/user/1000/gnupg/S.gpg-agent.extra
 
 有关更多信息和故障排除，请参阅[问题 #85](https://github.com/drduh/YubiKey-Guide/issues/85)。
 
-## 链式 GPG 代理转发
+## 链式GPG代理转发
 
 假设您已完成上述步骤，并且*远程主机*上有`S.gpg-agent`，并且您想将此代理转发到*第三个*主机，首先您可能需要配置*第三个主机*的`sshd_config`  与*远程主机* 的方式相同，然后在*远程主机* 的ssh 配置中添加以下行：
 
