@@ -1,4 +1,7 @@
 > **译者注**：为了避免在实际操作的时候产生偏差或者参阅[原文](https://github.com/drduh/YubiKey-Guide)的时候看一句查一句，进行了简单的翻译，主要为机翻，人工对少量语句进行了调整。如果有看不懂的地方以原文为准。
+> 本文档目前仅作为个人学习GPG的记录，未对所有过程进行验证，不保证指南中的内容全部可用。
+> 根据个人使用情况进行更新，不保证跟随原文更新翻译。
+> 部分目录链接不可用，请使用阅读器目录。
 
 这是使用[YubiKey](https://www.yubico.com/products/yubikey-hardware/)作为[智能卡](https://security.stackexchange.com/questions/38924/how-does-storing-gpg-ssh-private-keys-on-smart-cards-compare-to-plain-usb-drives)用于存储GPG加密、签名和身份验证密钥，以及用于SSH的指南。本文档中的许多原则也适用于其他智能卡设备。
 
