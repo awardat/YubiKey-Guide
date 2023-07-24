@@ -75,7 +75,7 @@
     - [链式SSH代理转发](#链式ssh代理转发)
   - [GitHub](#github)
   - [OpenBSD](#openbsd)
-  - [Windows](#windows)
+  - [在Windows中使用](#在Windows中使用)
     - [WSL](#wsl)
       - [使用ssh-agent还是S.weasel-pegant](#使用ssh-agent还是sweasel-pegant)
       - [先决条件](#先决条件)
@@ -2557,7 +2557,7 @@ $ doas rcctl enable pcscd
 $ doas reboot
 ```
 
-## Windows
+## 在Windows中使用
 
 Windows 已经安装了一些虚拟智能卡读卡器，例如为 Windows Hello 提供的读卡器。 为了确保 scdaemon 使用的 YubiKey 是正确的，您应该将其添加到其配置中。 您将需要设备的全名。 要查找设备的全名，请插入 YubiKey 并打开 PowerShell 以运行以下命令：
 
