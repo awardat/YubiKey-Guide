@@ -27,3 +27,13 @@
 [jamesog/yubikey-ssh: How to use a Yubikey with OpenSSH without GPG](https://github.com/jamesog/yubikey-ssh)
 
 [carniz/ubuntu-yubikey-setup: A guide for setting up Yubikey support on an Ubuntu 18.04 / 20.04-based distribution](https://github.com/carniz/ubuntu-yubikey-setup)
+
+
+
+## 当无法在VMWare虚拟机中使用Yubikey
+
+[Troubleshooting Device Passthrough with VMware Workstation and VMware Fusion](https://support.yubico.com/hc/en-us/articles/360013647640-Troubleshooting-Device-Passthrough-with-VMware-Workstation-and-VMware-Fusion)
+
+[在VMWare Workstation虚拟机里使用 yubikey](https://www.liurongxing.com/how-use-yubikey-on-vmware-workstation.html)
+
+[Not able to passthrough a Yubikey](https://communities.vmware.com/t5/ESXi-Discussions/Not-able-to-passthrough-a-Yubikey/td-p/2808463)
