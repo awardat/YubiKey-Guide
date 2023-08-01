@@ -2,7 +2,7 @@
 > 本文档目前仅作为个人学习GPG的记录，未对所有过程进行验证，不保证指南中的内容全部可用。
 > 根据个人使用情况进行更新，不保证跟随原文更新翻译。
 
-**PS：**我买了一个飞天ePass1000ND，使用记录放在[这里](https://github.com/awardat/ePass1000ND)。
+**PS：** 我买了一个飞天ePass1000ND，使用记录放在[这里](https://github.com/awardat/ePass1000ND)。
 
 这是使用[YubiKey](https://www.yubico.com/products/yubikey-hardware/)作为[智能卡](https://security.stackexchange.com/questions/38924/how-does-storing-gpg-ssh-private-keys-on-smart-cards-compare-to-plain-usb-drives)用于存储GPG加密、签名和身份验证密钥，以及用于SSH的指南。本文档中的许多原则也适用于其他智能卡设备。
 
