@@ -2,6 +2,8 @@
 > 本文档目前仅作为个人学习GPG的记录，未对所有过程进行验证，不保证指南中的内容全部可用。
 > 根据个人使用情况进行更新，不保证跟随原文更新翻译。
 
+**PS：**我买了一个飞天ePass1000ND，使用记录放在[这里](https://github.com/awardat/ePass1000ND)。
+
 这是使用[YubiKey](https://www.yubico.com/products/yubikey-hardware/)作为[智能卡](https://security.stackexchange.com/questions/38924/how-does-storing-gpg-ssh-private-keys-on-smart-cards-compare-to-plain-usb-drives)用于存储GPG加密、签名和身份验证密钥，以及用于SSH的指南。本文档中的许多原则也适用于其他智能卡设备。
 
 与存储在磁盘上的基于文件的密钥不同，YubiKey上存储的密钥[不可导出](http://web.archive.org/web/20201125172759/https://support.yubico.com/hc/en-us/articles/360016614880-Can-I-Duplicate-or-Back-Up-a-YubiKey-)。并且更方便日常使用，在使用PIN解锁后只需触摸YubiKey即可解锁SSH/GPG密钥，而无需记住并输入密码。所有签名和加密操作都发生在卡上，而不是在操作系统内存中。
@@ -118,7 +120,7 @@
 1. 日常使用的操作系统
 1. 在日常使用的操作系统中安装的虚拟机（比如 [virt-manager](https://virt-manager.org/)、VirtualBox 或 VMware）
 1. 可以双启动的单独的强化 [Debian](https://www.debian.org/) 或 [OpenBSD](https://www.openbsd.org/)
-1. LiveCD， 比如 [Debian Live](https://www.debian.org/CD/live/) 或 [Tails](https://tails.boum.org/index.en.html)
+1. LiveCD， 比如 [Debian Live](https://www.debian.org/CD/live/) 或~~[Tails](https://tails.boum.org/index.en.html)~~（**译者注：**Tails强制使用Tor以实现匿名访问网络，存在一定使用难度）
 1. 安全硬件/固件（[Coreboot](https://www.coreboot.org/)、[Intel ME removed](https://github.com/corna/me_cleaner)）
 1. 没有网络功能或使用网闸隔离的专用系统
 
